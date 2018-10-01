@@ -60,18 +60,23 @@ To restore transaction processing for un-upgraded clients we alter
 this ``forced hard-fork'' setup in the following ways:
 
 \begin{enumerate}
+
   \item
+
     The coinbase outputs of the new-PoW chain are \textbf{not} entered
     into the UTXO set.  They serve a purpose that is explained in
     Section~\ref{coinbasepayoutqueue}, but they are not themselves
     spendable in either chain.
 
-  \item The coinbase outputs of the old-PoW chain enter the UTXO set
+  \item
+
+    The coinbase outputs of the old-PoW chain enter the UTXO set
     of \textbf{both} chains, after a maturation process explained in
     Section~\ref{coinbaseconfirmation}.  To be clear, this means a
     post-fork coinbase output of the old-PoW chain will \textbf{also}
     be spendable on the new-PoW chain after the maturation process
     following synchronization of state between them.
+
 \suspend{enumerate}
 
 With these changes a transaction valid on one chain is also valid on
@@ -85,13 +90,16 @@ academic concern.  But we now relax this restriction without enabling
 transaction history to diverge:
 
 \resume{enumerate}
+
   \item
+
     The coinbase of the old-PoW chain is allowed to commit to block
     headers of the new chain, if doing so extends the chain of known
     headers to a more-work tip of equal or greater height than was
     previously known from prior commitments.
 
   \item
+
     If at any time a header is buried by $N$ or more further block
     headers in the same chain, then the buried header
     is \emph{locked-in} and cannot be subject to a later header
@@ -99,14 +107,17 @@ transaction history to diverge:
     the $N$th commitment.
 
   \item
+
     Should an attempt be made to commit to a chain of block headers
     that would reorg an already locked-in header or even just remove
     its locked-in / $N$th confirmation status, the block containing
     that commitment is invalid.
 
   \item
+
     Adding an $N$th confirmation of a block requires that buried and
     now locked-in header reference a valid block.
+
 \suspend{enumerate}
 
 Thus full-block validation of the other chain is allowed to happen
@@ -118,7 +129,9 @@ confirmation---or else the block containing that $N$th confirmation
 commitment is invalid.
 
 \resume{enumerate}
+
   \item
+
     Once the old-PoW chain has accumulated $N$ confirmations of a new
     chain block header, resulting in that new-chain block acquiring
     ``locked-in'' status, the transactions in that block are added to
@@ -129,11 +142,13 @@ commitment is invalid.
     earliest a transaction can appear is in the following block.
 
   \item
+
     When the transaction queue is non-empty, and so long as the queue
     remains not-empty, new blocks in the original chain are required
     to include transactions from that queue, in order, for as long as
     the next transaction in the queue is valid and including it would
     not violate aggregate limits for the block.
+
 \end{enumerate}
 
 A transaction will only ever be invalid for reasons of finality
@@ -208,7 +223,9 @@ transaction queue on the compatibility chain, this time on the forward
 block chain and with regard to coinbase payouts:
 
 \begin{enumerate}
+
   \item
+
     The coinbase of forward blocks are allowed to commit to block
     headers of the compatibility chain, if doing so extends the chain
     of known headers to a more-work tip than was previously known from
@@ -222,11 +239,13 @@ block chain and with regard to coinbase payouts:
     required.
 
   \item
+
     Once the forward block chain has accumulated $N$ confirmations of
     a compatibility block header, that block's coinbase outputs are
     entered into the UTXO set with an $M$-block maturity (allowing
     them to be spent in $M$ additional blocks after the inclusion of
     the $N$-th block header commitment).
+
 \end{enumerate}
 
 $N$ is a free protocol choice known as the \emph{forward-block
@@ -245,7 +264,9 @@ We can now construct a complete timeline for what happens when the new
 rules are activated:
 
 \begin{enumerate}
+
   \item
+
     At the time of activation of the fork the forward block chain
     splits from the compatibility chain, and the forward block miners
     begin minting blocks using the new-PoW and transactions selected
@@ -258,6 +279,7 @@ rules are activated:
     for sequence locks, etc.).
 
   \item
+
     Simultaneously the upgraded original-PoW miners, constituting a
     supermajority of hash power at the time of activation, begin
     mining blocks for the compatibility chain, initially consisting of
@@ -265,17 +287,21 @@ rules are activated:
     commitments to new-PoW forward block header(s).
 
   \item
+
     As blocks progress on the compatibility chain, forward block
     miners include reciprocal commitments in the coinbases of their
     own forward blocks to the advancing tip of the old-PoW
     compatibility chain.
 
   \item
+
     When in either chain knowledge of the other exceeds $N$ blocks
     past the point of fork, asymmetrical effects occur:
 
     \begin{enumerate}
+
       \item
+
         Once the compatibility chain has added knowledge of a forward
         chain tip $N$ or more blocks beyond the point of fork,
         transactions other than the coinbase in forward blocks with
@@ -289,12 +315,15 @@ rules are activated:
         rule.
 
       \item
+
         Once the forward chain has added knowledge of a compatibility
         chain tip $N$ or more blocks beyond the point of fork, the
         coinbase outputs of compatibility blocks with $N$ or more
         known confirmations are added to the UTXO set and become
         spendable after an $M$ block maturity period.
+
     \end{enumerate}
+
 \end{enumerate}
 
 For an upgraded wallet, confirmations on the forward block chain are

@@ -11,7 +11,9 @@ increased by one of four different mechanisms.  Taken individually,
 each approach comes with significant tradeoffs:
 
 \begin{enumerate}
+
   \item
+
     \emph{Hard fork} change the consensus rules in a way that is not
     forwards compatible with old clients, e.g. simply increasing the
     weight limit, thereby requiring \textbf{all} nodes to upgrade by
@@ -21,6 +23,7 @@ each approach comes with significant tradeoffs:
     value.
 
   \item
+
     \emph{Soft fork} validation rules for segregating entire
     transactions from the classically visible block structure, in the
     form of a so-called \emph{extension block} which contains extra
@@ -37,6 +40,7 @@ each approach comes with significant tradeoffs:
     bitcoin-like systems.
 
   \item
+
     \emph{Soft fork} validation rules for transferring value between
     sidechains enables scaling to happen on a separate network using
     tokens ultimately backed by original currency from the source
@@ -52,6 +56,7 @@ each approach comes with significant tradeoffs:
     regarding ledger opacity to un-upgraded nodes.
 
   \item
+
     Manipulation of timestamps affecting the difficulty-adjustment
     algorithm to make blocks more frequent and thereby indirectly
     achieve similar results to a block size increase.  Known as the
@@ -65,6 +70,7 @@ each approach comes with significant tradeoffs:
     times, and the resulting consequences for centralization risk,
     comparatively very little gain can be had from using a time-warp
     exploit before the risks become unacceptable.
+
 \end{enumerate}
 
 While each of these approaches individually have unacceptable

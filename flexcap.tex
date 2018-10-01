@@ -60,7 +60,9 @@ specifically recommend two changes that permit larger transaction
 processing throughput without decreasing censorship resistance:
 
 \begin{enumerate}
+
   \item
+
     Increase the inter-block interval to a larger value than the
     original chain's \SI{10}{\minute} / \SI{599.7}{\second} target to
     reduce the ratio of network latency to the inter-block interval.
@@ -69,10 +71,12 @@ processing throughput without decreasing censorship resistance:
     (confirmation time).
 
   \item
+
     Raise the (initial) forward block maximum weight
     from \SI{4}{\mega\weight} to a recommeneded value
     of \SI{6}{\mega\weight}, permitting approximately the same
     transaction processing rate per unit time as the original chain.
+
 \suspend{enumerate}
 
 Increasing the aggregate block weight limit while simultaneously
@@ -94,7 +98,9 @@ under certain circumstances a larger or smaller block weight limit, at
 the discretion of the new-PoW miner according to the following rules:
 
 \begin{enumerate}
+
   \item
+
     Forward block miners are allowed to optionally *bias* their
     proof-of-work target by up to $\pm 25\%$.  This essentially makes
     their block between $25\%$ easier and $25\%$ harder to solve,
@@ -102,6 +108,7 @@ the discretion of the new-PoW miner according to the following rules:
     expectation.
 
   \item
+
     Biasing the work target has an inverse-quadratic relationship with
     the adjustment made to the aggregate weight limit for the block
     relative to some baseline.  Specifically, for a bias value $x =
@@ -114,6 +121,7 @@ the discretion of the new-PoW miner according to the following rules:
 
     Equation~\eqref{rewardbiaseq} is depicted in
     Figure~\ref{rewardbiasfig}.
+
 \suspend{enumerate}
 
 \begin{figure}
@@ -140,31 +148,39 @@ chain. A miner cannot ``win out'' over another's block by choosing a
 higher work bias.
 
 \resume{enumerate}
+
   \item
+
     Miners provide in their blocks a declared weight, which must be
     greater than or equal to the actual weight of the block under
     current consensus rules, and less than or equal to the maximum
     weight permitted given their choice of work bias.\footnote{The
-      declared weight is specified and constrained to a range rather
-      than being a calculated value for reasons of forward
-      compatibility with future soft-fork extensions.}
+    declared weight is specified and constrained to a range rather
+    than being a calculated value for reasons of forward compatibility
+    with future soft-fork extensions.}
 
   \item
+
     Every $L$ forward blocks (we propose $L = 2016$, approx. \num{3}
     weeks), two things happen:
 
     \begin{enumerate}
+
       \item
+
         The base limit $w_0$ adjusts to the (possibly gain limited)
         average of the past $L$ declared weights.
 
       \item
+
         The new-PoW difficulty adjusts up or down as necessary to
         maintain the \SI{15}{\minute} inter-block
         interval.\footnote{If bitcoin's difficulty adjustment
-          algorithm is used, the time-warp bug should be fixed for
-          forward blocks.}
+        algorithm is used, the time-warp bug should be fixed for
+        forward blocks.}
+
     \end{enumerate}
+
 \end{enumerate}
 
 With the above rules, the forward block chain is able to provide burst
@@ -192,27 +208,35 @@ Upon activation, the we grant the compatibility chain new consensus
 rules governing its block timestamps:
 
 \begin{enumerate}
+
   \item
+
     If a compatibility block is \textbf{not} the last block in a
-    difficulty adjustment period (the block height is non-zero modulo
-    \num{2016}):
+    difficulty adjustment period (the block height is non-zero
+    modulo \num{2016}):
 
     \begin{enumerate}
+
       \item
+
         If after constructing the block the transaction queue is
         empty, no additional rules apply.
 
       \item
+
         Otherwise, if the next transaction in the queue is non-final
         for reasons of a time-based lock-time or sequence-lock, the
         block timestamp is set to the minimum value necessary to
         satisfy that lock condition.
 
       \item
+
         Otherwise, the block's timestamp \textbf{must} be set to its
         minimum allowed value, which is one more than the median of
         the \num{11} blocks prior.
+
     \end{enumerate}
+
 \suspend{enumerate}
 
 The implication of this rule is that so long as compatibility blocks
@@ -229,7 +253,9 @@ The mechanism for causing the difficulty adjustment is a bit more
 complicated:
 
 \resume{enumerate}
+
   \item
+
     The compatibility block miner makes a commitment alongside forward
     block headers to the aggregate declared weight of the forward
     block chain up to that point.\footnote{If sharding is used (see
@@ -241,6 +267,7 @@ complicated:
     block containing the $N$th forward block commitment is invalid.
 
   \item
+
     Since the {\tt block.nTime} field now has its value subject to
     additional rules when blocks are full, the compatibility block
     miner commits to the wall-clock time in the {\tt nLockTime} field
@@ -257,13 +284,17 @@ complicated:
     applied to the block timestamp:
 
     \begin{enumerate}
+
       \item
+
         The coinbase {\tt nLockTime} must be greater than the median
         of the past \num{23} coinbase {\tt nLockTime}'s.\footnotemark
 
       \item
+
         The coinbase {\tt nLockTime} commitment must be no more than
         two hours ahead of the current wall-clock time.
+
     \end{enumerate}
 
     \footnotetext{The median-time-past window is doubled to prevent
@@ -278,6 +309,7 @@ complicated:
     set according to the following procedure:
 
     \begin{enumerate}
+
       \item
 
         A ratio $Q$, the \emph{warp factor}, is calculated as the
@@ -322,6 +354,7 @@ complicated:
         value.
 
     \end{enumerate}
+
 \end{enumerate}
 
 Together these rules cause the compatibility chain's block rate to

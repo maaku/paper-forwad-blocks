@@ -21,31 +21,37 @@ define how outputs enter the UTXO set of the forward block shards,
 becoming spendable:
 
 \begin{enumerate}
+
   \item
+
     Each shard constitutes a disjoint ledger of value, with a UTXO set
     that does not intersect with the UTXO set of any other shard.  As
     a consequence, transactions must source all their inputs from the
     same shard.
 
   \item
+
     All legacy outputs and non-prefixed segwit outputs of a
     transaction belong to the shard that transaction was confirmed in
     (the same shard it sourced its inputs from), and are immediately
     spendable by later transactions of the same shard.
 
   \item
+
     A prefixed native segwit output in a user transaction differs from
     a native segwit output in having a prefix byte indicating its
     destination shard.  Prefixed native segwit outputs do \textbf{not}
     enter the UTXO set of any forward block shard.
 
   \item
+
     As transactions are added to the transaction processing queue of
     the compatibility chain, any prefixed native segwit outputs in the
     transactions of that forward block are added to the coinbase
     payout queue.
 
   \item
+
     When a transaction is processed from the queue and included in a
     compatibility block, the prefixed segwit output is spent by a
     miner-generated transaction within the same block, and its value
@@ -53,11 +59,13 @@ becoming spendable:
     the coinbase payout queue.
 
   \item
+
     A prefixed native segwit output in the coinbase transaction of a
     compatibility block becomes spendable in the shard specified by
     its prefix, and that shard only, through the normal process of
     maturation.  Any legacy or non-prefixed native segwit coinbase
     outputs mature into the default, first shard.
+
 \end{enumerate}
 
 As a prefix we recommend using a single-byte script opcode, for
