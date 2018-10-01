@@ -1,0 +1,218 @@
+In this section we lay out the suggested initial settings and growth
+limits for sharding and the per-shard flexible weight limit in
+bitcoin:
+
+\begin{enumerate}
+
+  \item
+
+    The forward block chain is split into 28 shards with separate UTXO
+    sets, for a \num{28}x increase in censorship resistance if fully
+    utilized.
+
+  \item
+
+    All forward shard chains have a fixed target inter-block interval
+    of \SI{15}{\minute}, for an additional few percentage points of
+    censorship resistance.
+
+  \item
+
+    At the point of activation, the initial maximum weight per block
+    $w_0$ of the first/default forward shard chain is
+    \SI{6}{\mega\weight}, and \SI{25}{\kilo\weight} each for the other
+    \num{27} remaining shards.
+
+  \item
+
+    Simultaneously with activation, a previously implicit maximum
+    transaction weight is imposed with a limit value very close to the
+    original chain's maximum weight limit: \SI{3.975d6}{\weight}.  The
+    presently lower policy limit still applies, but transactions
+    larger than \SI{3.975}{\mega\weight} are now invalid, not just
+    non-standard.
+
+\suspend{enumerate}
+    
+The per-shard target inter-block interval of \SI{15}{\minute} implies
+a new block from a randomly selected shard chain arriving every
+$\sim\SI{32}{\second}$ or so, which provides a total aggregate
+transaction processing rate of \SI{4.45}{\mega\weight} every
+\SI{10}{\minute}, only $11.25\%$ more than the original maximum block
+weight.
+
+This configuration of the flexible block weight limit sets an initial
+limit on the first shard chain that provides a transaction processing
+throughput equivalent to the original chain, and therefore starts with
+exactly the same validation costs as all UTXO exist in that shard
+initially, and with approximately the same censorship resistance.  The
+other shard chains provide an additional $11.25\%$ of block space, but
+user adoption of this space is likely to take time as wallets and
+other infrastructure are adapted, just as was the case with segwit.
+
+Once sharding is fully utilized, a censorship resistance will be
+improved by a factor equivalent to having reduced the original max
+block weight by $\sim 30$x.
+
+\resume{enumerate}
+  \item
+
+    Using a flexible cap, the miner is allowed to grow or shrink by up
+    to $\pm 25\%$ the maximum weight of their own forward shard
+    blocks, receiving less (when growing) or more (when shrinking)
+    block reward as a result, a tradeoff they would only make in
+    response to abnormally high or low clearing fee rates.
+
+  \item
+
+    Every \num{2016} blocks (a \textbf{three} week period), each shard
+    chain will add to its baseline maximum weight $3.125\% (=
+    \sfrac{1}{32})$ of the difference from the previous baseline limit
+    to the trailing average of the actual last \num{2016} block's
+    weight limits, as were adjusted by the flex cap, constrained to be
+    no smaller than \SI{25}{\kilo\weight} and no larger than
+    \SI{768}{\mega\weight}.  Thus an adjustment of no more than
+    \num{1.0078125}x in either direction is possible per adjustment
+    period, resulting in a maximum adjustment of around
+    \SI[per-mode=symbol]{\pm 18.4}{\percent\per\year}.
+
+\end{enumerate}
+
+Should every shard chain adjust in response to real usage to its
+maximum allowed size of \SI{768}{\mega\weight}, the total transaction
+processing throughput on the forward block shard chains taken together
+would be $28 \times \SI{768}{\mega\weight}=\SI{21.504}{\giga\weight}$
+every \SI{15}{\min}, or expressed as a more conventional rate
+\SI{14.336}{\giga\weight} every \SI{10}{\min} which very nearly equals
+the maximum allowed throughput on the compatibility chain when fully
+exploiting the time-warp feature.  However it would take consistent
+maximum upwards adjustments every period for half a century to reach
+this limit, and given the quadratic costs to raising the flexcap,
+probably much longer.
+
+\subsection{How Reasonable Is This Upper Bound, Really?}
+
+It is not inconceivable that ongoing network and validator
+improvements will permit a growth in the decades and centuries to come
+of the order of magnitude required, \numrange{7.5}{12} doublings of
+compute resources, storage, and bandwidth to safely reach the maximum
+throughput of \SI{14.336}{\giga\weight} every \SI{10}{\min}, assuming
+today's \SI{4}{\mega\weight} limit as the present-day ``safe''
+baseline.  It is worth noting that even in this extreme the
+corresponding per-shard weight limits would be less than the maximum
+limits allowed by conservative block size increase proposals such as
+BIP-103 over the same timeframes.
+
+\SI{768}{\mega\weight} per \SI{15}{\minute} shard-block is ``only''
+\num{192}x the post-segwit weight limit of \SI{4}{\mega\weight} per
+\SI{10}{\minute} block---about \num{7.5} doublings.  Hitting this
+limit would require new 4MWe compatibility blocks generated every
+\SI{167}{\milli\second}, fed from a queue of transactions generated by
+\num{28} loosely coupled shards, for a total of
+\SI{21.504}{\giga\weight} every \SI{900}{\second} / \SI{15}{\minute}.
+Staying up to date with such a block chain would require
+\SI{240}{Mbps} downlink, and participating as a relay node would
+require an approximate \num{4}x multiple thereof, or around
+\SI{1}{Gbps}.\footnote{\num{1} download, and \num{3} uploads per
+  transaction.}  Costs to validators would be \num{3584}x present-day
+costs, or just under \num{12} doublings.
+
+While a lot, and certainly outside of current capabilities, this is
+not so crazily outside the realm of possibility as it might seem when
+we consider what generations of technologies might exist into the
+foreseeable future:
+
+\begin{itemize}
+  \item
+
+    Mature graphene transistors, among many possible technological
+    pathways, could provide consumer electronics with many orders of
+    magnitude more performance for the same power and heat
+    dissipation, allowing continued increase in the computational
+    capacity available within consumer form factors (e.g. laptops \&
+    desktop workstations), and make possible large storage density
+    non-volatile memory to remove I/O bottlenecks.
+
+  \item
+
+    Better electro-optical interconnects would allow existing deployed
+    fiber optic cables to carry orders of magnitude more information,
+    allowing for higher last-mile bandwidth and transfer caps from
+    consumer internet services, allowing both wired connections and
+    WiFi be linked with \SI{1}{Gbps} or faster WAN connections.
+
+  \item
+
+    Mobile data is unlikely to advance as far (due to spectrum
+    scarcity), but the broadcast nature of block chain data means that
+    the partially-trusted solution of satellite or terrestrial radio
+    broadcast could be used for block distribution to fully validating
+    block-only mobile clients.  \SI{240}{Mbps} for absolutely full
+    blocks is only about \num{12} HDTV channels, meaning there is
+    sufficient spectrum available today for multiple operators to
+    redundantly broadcast block data of that size.  Mobile clients
+    would only require a lower bandwidth bidirectional connection (3G
+    or better) to broadcast their transactions.
+
+\end{itemize}
+
+Looking at the flip side of damand, $28 \times \SI{768}{\mega\weight}
+= \SI{21.504}{\giga\weight} / \SI{15}{\min}$ is
+\SI{2.064}{\tera\weight} per day in transaction processing capability,
+or about \numrange{1}{2}\si[per-mode=symbol]{\tera\byte\per\day} of
+block chain data.  Although a lot of data by any reasonable
+measurement, it's still only about \num{1} transaction per day for
+every human being presently alive, to say nothing of future
+populations in the cis-lunar light sphere.  For payments this would
+seem to be more than enough as only rebalancing transactions of
+payment channels are needed at a frequency of a month or so.  But:
+
+\begin{itemize}
+  \item
+
+    The napkin-math calculation of
+    $\sim1\mathrm{tx}/\mathrm{day}/\mathrm{pp}$ is an average, whereas
+    the need to rebalance less frequently is a statement of the
+    median.  We should expect the need for block chain access to
+    follow a power law distribution, which very well could push the
+    necessary average much higher than the median value, as the median
+    is more reflective of the long tail of casual use than the peak of
+    businesses and services that make much higher use of the block
+    chain as a settlement platform.
+
+  \item
+
+    Focusing on payments is myopic as what bitcoin provides is the
+    first, and so far only platform for fully automated trustless
+    dispute resolution.  Payments are only the simplest form of what
+    we might call \emph{bitcoin-compatible smart contracts} that use
+    bitcoin or other crypto tokens as collateral and UTXOs as
+    semaphore primitives in the coordination of the actions of
+    multiple real-world parties with respect to some pre-arranged
+    contract.  While it is possible that multiple contracts can be
+    handled with a single pot of funds managed by a multi-party
+    off-chain protocol---as is the case with lightning---there is an
+    efficiency tradeoff to be made and access to the chain is
+    eventually required, always.
+
+\end{itemize}
+
+In this light, it is entirely possible that
+$1\mathrm{tx}/\mathrm{day}/\mathrm{pp}$ is below the needs of what
+true global adoption would require for a block chain that handles all
+forms of automated commercial dispute resolution, not just consumer
+payments.  However it is the limit of what can be achieved as a fully
+forwards compatible soft-fork in which all nodes see all transactions.
+
+We contend then that these maximum limits are within the realm of
+reasonable demand in the circumstance of total world adoption, while
+also within the limits of what foreseeable technology might enable
+within the decades it would take, even optimistically, to get there.
+In the mean time an appropriately configured flexible cap ensures that
+a lower limit is maintained until such time in the future as there is
+real, paid-for, non-transient demand for that much block space,
+ensuring in the process that block size increases cannot be used as a
+way of avoiding transaction fees.  Furthermore, a reasonable flex cap
+proposal, as we have laid out here, would make sure that increases
+happen slowly enough that collective user action could impose a lower
+limit if it were seen as being being prematurely raised.

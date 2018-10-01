@@ -1,0 +1,44 @@
+While the ability to increase the block rate must be limited so as to
+constrain resource utilization in validators and retain censorship
+resistance, which both together provide the properties we care about
+and call \emph{decentralization}, let's set this aside for just a
+moment and consider just what the limits are of using time-warp to
+increase settlement capacity on the compatibility chain.  After
+establishing what the protocol-allowed upper limits are, we will then
+look at whether these limits would ever be reasonable, and ways in
+which the forward block size and compatibility block interval can be
+limited so as to preserve decentralization properties that we care
+about in the interim.
+
+Because a block's timestamp is constrained to be larger than the
+median timestamp of the \num{11} blocks prior, a sequence of up to
+\num{6} blocks may share the same timestamp before consensus rules
+require block-time to tick forward.  Thus there cannot be more than
+\num{6} blocks per second in expectation before block time advances at
+a rate more quickly than actual (wall clock) time, which becomes
+problematic as block time is not allowed to exceed actual/wall clock
+time by more than \SI{2}{\hour} at the tip.
+
+At this maximum sustainable rate \SI{14.4}{\giga\weight} of
+transactions could be processed in \num{3600} full compatibility
+blocks every \SI{10}{\minute},\footnote{$600 \times 6 =$ \num{3600}
+  blocks $\times \frac{\SI{4}{\mega\weight}}{\mathrm{block}} =
+  \SI{14.4}{\giga\weight}$} with one compatibility block every
+\SI{167}{\milli\second} in expectation.  This is an effective
+\num{3600}x transaction processing rate increase and represents the
+actual hard limit allowed by the bitcoin protocol, before this scaling
+approach would break forward compatibility with older clients.  Should
+this limit be reached, the block timestamps of the compatibility chain
+would be at least two weeks old and advancing by one tick every six
+blocks, with each block arriving every \sfrac{1}{6}th of a second in
+expectation.  Every \num{2016} blocks, which would occur every five
+and half minutes, normal difficulty adjustment would be prevented by
+setting the timestamp to be approximately the present wall-clock time,
+two weeks later than the \num{2015}th prior block timestamp.  The next
+block that follows returns to the pattern of block timestamps
+increasing as slowly as possible.
+
+In a Section~\ref{parameters} we will evaluate how ridiculous---or
+not---this real upper limit is, whether it would ever be reasonable to
+allow such upper limits to be reached, and by what mechanism lower
+limits could be enforced in the interim.

@@ -1,0 +1,94 @@
+\documentclass[letterpaper, 10 pt, conference]{ieeeconf}
+
+\IEEEoverridecommandlockouts
+\overrideIEEEmargins
+
+\usepackage{graphicx}
+\graphicspath{{.}}
+\usepackage{epsfig}
+\usepackage{mathptmx}
+\usepackage{times}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage[binary-units]{siunitx}
+\usepackage{mdwlist}
+\usepackage{booktabs}
+\usepackage{xfrac}
+\usepackage[utf8]{inputenc}
+
+\DeclareSIUnit\year{yr}
+\DeclareSIUnit\weight{We}
+\DeclareSIUnit\bitcoin{btc}
+\DeclareSIUnit\block{blk}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+
+\title{\bf
+  {\LARGE Forward Blocks}\\
+  {\Large On-chain/settlement capacity increases without the hard-fork}
+}
+
+\author{Mark Friedenbach\\{\tt\small mark@friedenbach.org}%
+\thanks{*This work was not supported by any organization.}%
+}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+\pagestyle{empty}
+
+\begin{abstract}
+\input{abstract.tex}
+\end{abstract}
+
+\section{Introduction} \label{introduction}
+\input{intro.tex}
+
+\section{Centralization Risks of Larger Settlement Throughput} \label{centralizationrisk}
+\input{centralizationrisk.tex}
+
+\section{Changing Proof-of-Work as a Soft-Fork via a Dual-PoW Difficulty Transition} \label{dualpow}
+\input{dualpow.tex}
+
+\section{Loosely-Coupled Chain Dependency via ``Forward Blocks''} \label{forwardblocks}
+\input{forwardblocks.tex}
+
+\section{Managing the Shared Coinbase Payout Queue} \label{coinbasepayoutqueue}
+\input{coinbasepayoutqueue.tex}
+
+\section{A Smooth Difficulty Transition Between Proof-of-Work Functions} \label{smoothdifficulty}
+\input{smoothdifficulty.tex}
+
+\section{Increasing the Block Weight Limit with a Flexible Cap and a Flux Capacitor} \label{flexcap}
+\input{flexcap.tex}
+
+\section{The High End of Scaling Limits on the Compatibility Chain} \label{hardlimits}
+\input{hardlimits.tex}
+
+\section{Multiple forward blocks: sharding the chain} \label{sharding}
+\input{sharding.tex}
+
+\section{Recommended Forward Shard Weight Limits and Flexcap Parameters} \label{parameters}
+\input{parameters.tex}
+
+\section{Extension Outputs: Generalizing the Coinbase Payout Queue for Future Protocol Additions} \label{extensionoutputs}
+\input{extensionoutputs.tex}
+
+\section{Conclusion} \label{conclusion}
+\input{conclusion.tex}
+
+%\addtolength{\textheight}{-12cm}  % This command serves to balance the column lengths
+                                  % on the last page of the document manually. It shortens
+                                  % the textheight of the last page by a suitable amount.
+                                  % This command does not take effect until the next page
+                                  % so it should come on the page before the last. Make
+                                  % sure that you do not shorten the textheight too much.
+
+%\section*{Appendix}
+
+%\section*{Acknowledgement}
+
+% bibtex goes here
+
+\end{document}

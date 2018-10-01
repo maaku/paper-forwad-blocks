@@ -1,0 +1,165 @@
+A necessary condition for transaction compatibility across the forward
+block and compatibility chains is that the forward block coinbase
+outputs \textbf{not} enter the UTXO set, as they are not visible to
+un-upgraded nodes following the compatibility chain, and any
+transactions spending such outputs would be considered invalid by
+those nodes.  However it is necessary that forward block miners be
+able to collect subsidy and fees, and generally be paid for the work
+that they do, which is a hard thing to accomplish when the outputs
+they have control over are unspendable.
+
+To solve this problem we provide a mechanism for delayed cross-chain
+state synchronization, and use the block reward on the compatibility
+chain to pay out both sets of miners.  In doing so we develop a
+mechanism for synchronizing state across chains or separate ledgers
+generally which we will reuse in our discussions of sharding in
+Section~\ref{sharding} and potential future privacy-enhancing
+extensions in Section~\ref{extensionoutputs}.  However the best way to
+introduce this mechanism is through the one other solution it is
+designed to solve: providing a smooth difficulty transition between
+the old an new proof-of-work functions which we will cover in
+Section~\ref{smoothdifficulty}.  But first we cover in this section
+the basic underlying mechanisms involved.
+
+Forward compatibility demands that all block reward (subsidy and fees)
+be processed in the compatibility block chain.  However payouts for
+both groups of miners are unconnected to whatever block reward happens
+to be available to a specific compatibility block.  We resolve this
+issue by aggregating block rewards into a common fund that is used to
+payout miners on a first-in, first-out basis.  Specifically:
+
+\begin{enumerate}
+  \item
+    Forward block miners are allowed a portion of the subsidy and fees
+    of the blocks they mine.  They specify the desired destination for
+    these funds in the dummy outputs of their coinbase transactions.
+
+  \item
+    Compatibility block miners are alloted a portion of the remaining
+    block reward from already locked-in forward blocks.  They too
+    specify the desired destination for their share of the coinbase
+    reward in a special commitment in their blocks.
+\suspend{enumerate}
+
+The mechanism for dividing block reward between the forward and
+compatibility miners is the topic of Section~\ref{smoothdifficulty}.
+Suffice to say there is a fair mechanism for determining how much of
+the subsidy and fees are allocated to each set of miners, and the
+reward made available to compatibility chain miners---which depends on
+the stochastic forward block finding rate---is smoothed out.
+
+When a compatibility block is processed, the desired outputs of the
+compatibility block miner are added to a first-in, first-out
+\emph{coinbase payout queue}.  The coinbase outputs of any forward
+block that achieves its $N$th confirmation and locked-in status is
+also added to the end of this queue.
+
+The coinbase of the compatibility block is required to pay out the
+collected subsidy and fees to outputs pulled from the payout queue in
+order.  If there is insufficient reward remaining to process the next
+coinbase payout, or if the payout queue is empty, the remaining block
+reward is carried forward to cover future payouts.  Procedurally:
+
+\resume{enumerate}
+  \item
+    The compatibility block miner commits to their own outputs, of sum
+    total equal to or less than the output of the compatibility block
+    reward function $R$ specified in Section~\ref{smoothdifficulty}.
+    The committed outputs are added to a payout queue maintained by
+    each validator, before processing any other miner commitments.
+
+  \item
+    The compatibility block miner also commits to a possibly
+    zero-length chain of headers extending the known tip of the
+    forward block chain.  When a forward block receives its $N$th
+    confirmation reported to the compatibility chain, the forward
+    block's coinbase outputs are also added to the same payout queue.
+
+  \item
+    The normal block reward that would have been available for the
+    old-PoW miners if (counter-factually) the new rules hadn't
+    activated, plus any carry-over from the prior block, is used to
+    fund outputs from the queue in the order added.  If at any point
+    there is insufficient funds to pay out the next output or if the
+    payout queue is empty, the remaining block reward is put into a
+    special \emph{carry-forward output}.
+
+  \item
+    Once the compatibility block receives $N$ confirmations in block
+    headers reported to the forward block chain, all the outputs of
+    its coinbase except for the carry-forward output are entered into
+    the UTXO set of the forward block chain, with an $M$ block
+    maturity period.
+
+  \item
+    Once the carry-forward output matures according to the
+    compatibility block rules, it is spent by a special
+    miner-generated transaction, the last transaction of the block in
+    which it became spendable.  If there are still payouts to be made
+    from the payout queue, the necessary amount of funds are released
+    as ``fee'' to be collected in the coinbase and paid out, otherwise
+    the remaining funds are placed in a carry-forward output of this
+    transaction to process coinbase payouts of the next block, or as
+    needed in the future.
+\suspend{enumerate}
+
+Compatibility chain miners are required to process outputs (meaning,
+include the payout in the block's coinbase transaction) taken from the
+payout queue, in order, until one of three stopping conditions are
+reached: (1) the payout queue is exhausted; (2) the block reward and
+carry-forward balance combined is less than the next item in the
+payout queue; or (3) adding additional coinbase outputs would exceed
+aggregate block limits.  Remaining funds from the block reward and
+carry-forward balance are placed in the coinbase and last-transaction
+carry-forward outputs, respectfully.
+
+One final rule settles contention between use of block space for
+making coinbase payouts and processing transactions:
+
+\resume{enumerate}
+  \item
+    The coinbase payout queue is processed before miner commitments or
+    the transaction queue, so the contribution of the coinbase towards
+    aggregate block limits is known.
+\end{enumerate}
+
+The above rules are consensus enforced---blocks are considered invalid
+if they do not adhere to all of the above rules.
+
+Now we have the right pieces in place to explain how mining rewards
+are claimed by both sets of miners:
+
+\begin{enumerate}
+  \item
+    A forward block is mined, containing a fake coinbase transaction
+    for the purpose of specifying where the forward block miner wants
+    their share of the block reward to go, as well as various other
+    required or optional commitments.
+
+  \item
+    Since the compatibility block reward function $R$ is a function of
+    the locked-in forward blocks over a specific period and there is
+    very little cost to including a forward block header commitment,
+    compatibility miners have incentive to include any valid forward
+    block headers they know about in their block templates.
+
+  \item
+    When a compatibility block is found, its coinbase contains payouts
+    pulled from the front of the queue, and its own payouts are added
+    to the end of the queue---both the compatibility miner's payout
+    preferences and the outputs of any newly locked-in forward blocks.
+
+  \item
+    Desiring to be paid for their prior work, the forward block miners
+    have incentive to include commitments to the longest compatibility
+    block chain they know about in their own block templates.
+
+  \item
+    When a forward block is found, the coinbase transactions of any
+    newly locked-in compatibility blocks enter the UTXO set, subject
+    to the usual \num{100} block maturation delay.
+\end{enumerate}
+
+By this mechanism both forward and compatibility block miners receive
+their pay by adding commitments to each other's blocks, maintaining
+the loosely coupled connection between the two chains.

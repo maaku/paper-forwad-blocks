@@ -1,0 +1,35 @@
+Segregated witness achieved a \numrange{2}{3.6}x capacity increase for
+on-chain settlement by moving script and signature data out of the
+area constrained by the original \SI{1}{MB} block size limit.
+Unfortunately this approach could only be used to achieve a one-time
+increase as there is no remaining unsigned transaction data of
+significant size that could be moved out of the transaction structure.
+
+The previously proposed concept of soft-fork extension blocks involves
+entire transactions being moved into segregated data structures, which
+allows for limitless scaling at the cost of breaking the transaction
+graph.  Alternatively simply removing or replacing block-size and
+other aggregate limits preserves the transaction graph but at the cost
+of a hard-fork cutoff event, and the significant transition risks and
+centralizing pressure that comes with any scheduled hard-fork event.
+
+We introduce the concept of \emph{forward blocks} which combine the
+best of both approaches enabling aggregate block limits on size and
+number of signature operations to be circumvented as a soft-fork,
+while preserving the property that the spend graph, including all
+transactions and their witnesses, is seen by legacy clients.
+Effective block sizes of up to \SI{14.336}{\giga\weight} can be
+achieved in this way, permitting scaling up on-chain/settlement
+transaction volume to \num{3584}x current levels, if permitted by the
+new consensus rules.
+
+The construction of forward blocks also makes possible changing the
+proof-of-work algorithm in a soft-fork compatible way, either
+simultaneously with dropping the aggregate limits or as a later
+re-application of the concept in nested forward blocks.  Other
+benefits of the implementation approach taken include the introduction
+of explicit sharding for better scaling properties, rebateable fee
+market for consensus fee detection, and smoothing out drops in miner
+subsidy.  It also provides the necessary prerequisite protocol pieces
+for confidential transactions, mimblewimble, unlinkable anonymous
+spends, and sidechains.

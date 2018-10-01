@@ -1,0 +1,173 @@
+There's a one-time win for decentralization that can be had
+simultaneous with the deployment of forward blocks, and that comes
+from \emph{sharding}.  By supporting multiple forward block chains,
+or \emph{shards}, higher total transactin processing rates can be
+achieved for the same level of latency-induced centralization risk.
+
+The technique is to explicitly segment outputs into disjoint UTXO sets
+for each \emph{shard}, and to require that all inputs to a transaction
+draw from a single shard.  Outputs may explicitly name a different
+shard that they belong to, but at the cost of a delayed transfer and
+maturation process achieving loose coupling of state between shards.
+The compatibility block chain tracks the block headers of all shards,
+and add transactions from each shard to the processing queue as the
+shard's forward blocks achieve $N$ confirmations.  When a transaction
+in one shard has an output destined for a different shard, the
+compatibility block chain adds that destination and amount to the
+coinbase payout queue and claims the output as part of the
+carry-forward balance.  Once paid out and mature, the coinbase payout
+enters the UTXO set of the destination shard.  The following rules
+define how outputs enter the UTXO set of the forward block shards,
+becoming spendable:
+
+\begin{enumerate}
+  \item
+    Each shard constitutes a disjoint ledger of value, with a UTXO set
+    that does not intersect with the UTXO set of any other shard.  As
+    a consequence, transactions must source all their inputs from the
+    same shard.
+
+  \item
+    All legacy outputs and non-prefixed segwit outputs of a
+    transaction belong to the shard that transaction was confirmed in
+    (the same shard it sourced its inputs from), and are immediately
+    spendable by later transactions of the same shard.
+
+  \item
+    A prefixed native segwit output in a user transaction differs from
+    a native segwit output in having a prefix byte indicating its
+    destination shard.  Prefixed native segwit outputs do \textbf{not}
+    enter the UTXO set of any forward block shard.
+
+  \item
+    As transactions are added to the transaction processing queue of
+    the compatibility chain, any prefixed native segwit outputs in the
+    transactions of that forward block are added to the coinbase
+    payout queue.
+
+  \item
+    When a transaction is processed from the queue and included in a
+    compatibility block, the prefixed segwit output is spent by a
+    miner-generated transaction within the same block, and its value
+    is added to the carry-forward balance used to process items from
+    the coinbase payout queue.
+
+  \item
+    A prefixed native segwit output in the coinbase transaction of a
+    compatibility block becomes spendable in the shard specified by
+    its prefix, and that shard only, through the normal process of
+    maturation.  Any legacy or non-prefixed native segwit coinbase
+    outputs mature into the default, first shard.
+\end{enumerate}
+
+As a prefix we recommend using a single-byte script opcode, for
+efficiency.  There are a total of 28 single-byte script opcodes which
+may be safely executed at the beginning of a scriptPubKey context:
+{\tt 1NEGATE}, {\tt FALSE}, {\tt TRUE}, the remaining \num{15} small
+number pushes (\numrange{2}{16}), {\tt NOP}, {\tt NOP1}, {\tt NOP4}
+through {\tt NOP10}, and {\tt DEPTH}.  {\tt CODESEPARATOR} could be
+used but is excluded from this list due to potential infrastructure
+screwups relating to its other, complicated semantics.
+Table~\ref{shardprefix} enumerates these shard prefixes in order.
+
+\begin{table} \center
+  \caption{Shard Prefixes}
+  \label{shardprefix}
+  \begin{tabular}{r l l}
+    \toprule
+    Shard & Prefix & Opcode\\
+    \midrule
+    1   &  $\mathtt{0x00}$  &  {\tt FALSE}\\
+    2   &  $\mathtt{0x4f}$  &  {\tt 1NEGATE}\\
+    3   &  $\mathtt{0x51}$  &  {\tt TRUE}\\
+    4   &  $\mathtt{0x52}$  &  \num{2}\\
+    5   &  $\mathtt{0x53}$  &  \num{3}\\
+    6   &  $\mathtt{0x54}$  &  \num{4}\\
+    7   &  $\mathtt{0x55}$  &  \num{5}\\
+    8   &  $\mathtt{0x56}$  &  \num{6}\\
+    9   &  $\mathtt{0x57}$  &  \num{7}\\
+    10  &  $\mathtt{0x58}$  &  \num{8}\\
+    11  &  $\mathtt{0x59}$  &  \num{9}\\
+    12  &  $\mathtt{0x5a}$  &  \num{10}\\
+    13  &  $\mathtt{0x5b}$  &  \num{11}\\
+    14  &  $\mathtt{0x5c}$  &  \num{12}\\
+    15  &  $\mathtt{0x5d}$  &  \num{13}\\
+    16  &  $\mathtt{0x5e}$  &  \num{14}\\
+    17  &  $\mathtt{0x5f}$  &  \num{15}\\
+    18  &  $\mathtt{0x60}$  &  \num{16}\\
+    19  &  $\mathtt{0x61}$  &  {\tt NOP}\\
+    20  &  $\mathtt{0x74}$  &  {\tt DEPTH}\\
+    21  &  $\mathtt{0xb0}$  &  {\tt NOP1}\\
+    22  &  $\mathtt{0xb3}$  &  {\tt NOP4}\footnotemark\\
+    23  &  $\mathtt{0xb4}$  &  {\tt NOP5}\\
+    24  &  $\mathtt{0xb5}$  &  {\tt NOP6}\\
+    25  &  $\mathtt{0xb6}$  &  {\tt NOP7}\\
+    26  &  $\mathtt{0xb7}$  &  {\tt NOP8}\\
+    27  &  $\mathtt{0xb8}$  &  {\tt NOP9}\\
+    28  &  $\mathtt{0xb9}$  &  {\tt NOP10}\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\footnotetext{In Tradecraft, {\tt NOP2} and {\tt NOP3} are also used
+  for a total of \num{30} shards.}
+
+Any user transaction output consisting of one of these prefixes
+followed by normal native segwit output script (a \numrange{0}{16}
+small integer push followed by a small data push) is called a prefixed
+native segwit output, and follows the process of coinbase maturation
+detailed above.  A coinbase payout of this form enters the UTXO set of
+the specified shard upon maturation, and can be spent within that
+shard exactly as if it were a native segwit script without the prefix.
+
+Without complicating the prefix scheme further, the number of shards
+is limited by the number of prefix bytes available, which is a
+historical artifact of bitcoin script.  As it happens however, the
+number of one-byte prefixes which can be safely executed at the
+beginning of a push-only script does align rather closely with the
+number of shards which can be safely allowed given other design
+constraints.
+
+\subsection{The Impact of Sharding on Centralization Risks}
+
+The maximum forward block size limits discussed previously
+of \SI{14.4}{\giga\weight} / \SI{10}{\minute} are far in excess of
+what could be supported by any presently imaginable network
+architecture: the centralization pressures would destroy the utility
+of the network, even with generous assumptions about future bandwidth
+and latency numbers.
+
+But by allowing some complexity to be pushed onto the user in the form
+of sharding, we can make full utilization of the available capacity of
+a time-warped compatibility block chain without growing individual
+forward block shard chains to be in excess of the upper limits of
+previous conservative block size increase proposals, such as BIP-103.
+
+Increasing the effective transaction processing rate through sharding
+proportionally increases the cost of validation for full nodes.  For
+lightweight clients, resources are only increased in proportion to the
+number of shards they have outputs on or are watching for payments.
+
+However increasing the effective transaction processing rate through
+sharding does not increase latency-dependent censorship risks, at
+least while the number of shards remains within reasonable limits.
+Each shard is its own long-interval forward block chain operating
+independently of the other shards, with a separately salted proof of
+work and a loosely-coupled value transfer process across shards.  The
+separate and salted proof-of-work requirement ensures that there is no
+correlation between when blocks are found on different shards.  The
+coinbase maturation period ensures that the state of one shard has no
+low-latency dependencies on the state of any other shard.  Together
+these prevent the introduction of centralizing mining incentives from
+the transaction weight of other shards, preventing a decrease in
+censorship resistance, but only so long as the time it takes to
+validate a shard remains significantly less than the expected time
+between any shard block being found.  \num{28} shards, with each shard
+having a \SI{15}{\minute} inter-block time would have shards arriving
+every $\sim\SI{32}{\second}$ in expectation on bitcoin, every
+\SI{30}{\second} on Tradecraft.  On the assumption that individual blocks
+should not take more than a handful of seconds per block to validate
+in the worst case, this provides ample room even in the face of mining
+variance, the flex cap, and adversarial blocks to ensure that multiple
+blocks arriving simultaneously (and therefore impacting each others'
+validation time) is not the norm.

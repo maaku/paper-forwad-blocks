@@ -1,0 +1,383 @@
+The aggregate block limits of forward blocks are not restricted to be
+the same as the aggregate limits enforced in pre-activation consensus
+rules (and carried over to the compatibility chain); both the maximum
+block weight and signature operation limits\footnote{Throughout this
+text we will refer to the block weight limit as the defining aggregate
+limit, but we mean both.  An increase or decrease of one limit in a
+forward block chain would presumably be accompanied by a proportional
+increase or decrease of the other limit, or the forward block chain
+may forego having a separate sigop limit entirely.} can have different
+values enforced in forward and compatibility blocks, so long as no
+single transaction exceeds the per-block limit of the compatibility
+chain.  If the forward block consistently has more transaction-weight
+than can fit in a compatibility block, transactions will accumulate
+for as long as this remains the case; with larger forward blocks comes
+increasing pressure on the compatibility block miners to process the
+transaction and coinbase payout queues.
+
+But if the difficulty of the compatibility block chain were to be
+lowered, then the same level of network hashrate would generate more
+compatibility blocks within a comparable interval of time.  Under
+normal circumstances this would cause the difficulty to increase at
+the next adjustment up to the requisite level to
+maintain \SI{599.7}{\second} expected block times.  However a flaw in
+bitcoin's difficulty adjustment algorithm can be used to trigger a
+difficulty lowering and used again to prevent any follow-up
+re-adjustments, thereby increasing the frequency at which
+compatibility blocks are found for as long as the flaw is exploited.
+This flaw is known as the time-warp bug: the
+\num{2016}-block difficulty adjustment interval is larger than the
+\num{2015}-block window used to make the calculation,\footnotemark
+allowing for the careful use of bogus timestamps at the endpoints of
+this window to arbitrarily adjust difficulty in either direction up to
+the maximum adjustment limit of $\pm 4$x.
+
+\footnotetext{This is, incidentally, why bitcoin targets
+  approx. \SI{599.7}{\second} block intervals rather than exactly
+  $\SI{10}{\minute} = \SI{600}{\second}$:
+
+  \begin{equation*}
+    \SI{600}{\second} * \frac{2015}{2016} \approx \SI{599.7}{\second}
+  \end{equation*}
+}
+
+We can combine both of these techniques of (1) increasing aggregate
+limits for forward blocks, and (2) decreasing the inter-block interval
+for compatibility blocks to achieve a higher transaction processing
+throughput, achieving effectively the same results as direct block
+weight limit increase on the original chain, but in a soft-fork
+compatible way.  We will later show that while such an aggregate limit
+increase raises validation costs for all nodes, large gains in
+transaction processing throughput can be had without increasing other
+centralization risks.
+
+\subsection{Initial Parameters of the Forward Block Chain}
+
+On activation of forward blocks we are given a one-time opportunity to
+alter the block-level consensus rules of the forward block chain in
+ways that on the compatibility chain would require a hard-fork.  We
+specifically recommend two changes that permit larger transaction
+processing throughput without decreasing censorship resistance:
+
+\begin{enumerate}
+  \item
+    Increase the inter-block interval to a larger value than the
+    original chain's \SI{10}{\minute} / \SI{599.7}{\second} target to
+    reduce the ratio of network latency to the inter-block interval.
+    We recommend a value of \SI{15}{\minute} / \SI{900}{\second} as a
+    compromise between transaction processing throughput and utility
+    (confirmation time).
+
+  \item
+    Raise the (initial) forward block maximum weight
+    from \SI{4}{\mega\weight} to a recommeneded value
+    of \SI{6}{\mega\weight}, permitting approximately the same
+    transaction processing rate per unit time as the original chain.
+\suspend{enumerate}
+
+Increasing the aggregate block weight limit while simultaneously
+increasing the inter-block interval is a net gain for centralization
+resistance even though the on-chain settlement throughput remains the
+same.  This is because the fundamental network latency is unchanged,
+and the network latency portion of block propagation now constitutes a
+smaller percentage of the total inter-block time.  This permits a
+slightly higher forward block weight limit for the same level of
+censorship resistance.
+
+The full initial parameters of the forward block chain and their
+justification are given in Section~\ref{parameters}.
+
+\subsection{A Flexible Cap on Forward Block Weight}
+
+In the new consensus rules on the forward block chain we now permit
+under certain circumstances a larger or smaller block weight limit, at
+the discretion of the new-PoW miner according to the following rules:
+
+\begin{enumerate}
+  \item
+    Forward block miners are allowed to optionally *bias* their
+    proof-of-work target by up to $\pm 25\%$.  This essentially makes
+    their block between $25\%$ easier and $25\%$ harder to solve,
+    which implicitly increases or reduces the miner's block reward
+    expectation.
+
+  \item
+    Biasing the work target has an inverse-quadratic relationship with
+    the adjustment made to the aggregate weight limit for the block
+    relative to some baseline.  Specifically, for a bias value $x =
+    \Delta T / T_0$ (permitted values of $x \in [-0.25, 0.25]$), the
+    permitted block weight w is given by:
+
+    \begin{equation} \label{rewardbiaseq}
+      w(x) = w_0(2x - 4x^2)
+    \end{equation}
+
+    Equation~\eqref{rewardbiaseq} is depicted in
+    Figure~\ref{rewardbiasfig}.
+\suspend{enumerate}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.5\textwidth]{rewardbias.eps}
+  \caption{Offset reward as a function of difficulty bias.}
+  \label{rewardbiasfig}
+\end{figure}
+
+Note that lowering the proof-of-work target, which permits slightly
+larger blocks that are harder to find, is asymmetric with respect to
+raising the target, which permits much smaller blocks that are easier
+to find.  A non-linear equation is required for there to be a fixed
+optimal value for a given transaction fee distribution.
+
+The largest temporary block-weight increase that can be obtained is
++$25\%$, with a $+25\%$ bias to the proof-of-work target, whereas the
+smallest temporary block-weight is $-75\%$ the default value, obtained
+with a $-25\%$ bias.
+
+Critically, this bias adjustment does not affect the representative
+work of the block for the purpose of determining the most-work
+chain. A miner cannot ``win out'' over another's block by choosing a
+higher work bias.
+
+\resume{enumerate}
+  \item
+    Miners provide in their blocks a declared weight, which must be
+    greater than or equal to the actual weight of the block under
+    current consensus rules, and less than or equal to the maximum
+    weight permitted given their choice of work bias.\footnote{The
+      declared weight is specified and constrained to a range rather
+      than being a calculated value for reasons of forward
+      compatibility with future soft-fork extensions.}
+
+  \item
+    Every $L$ forward blocks (we propose $L = 2016$, approx. \num{3}
+    weeks), two things happen:
+
+    \begin{enumerate}
+      \item
+        The base limit $w_0$ adjusts to the (possibly gain limited)
+        average of the past $L$ declared weights.
+
+      \item
+        The new-PoW difficulty adjusts up or down as necessary to
+        maintain the \SI{15}{\minute} inter-block
+        interval.\footnote{If bitcoin's difficulty adjustment
+          algorithm is used, the time-warp bug should be fixed for
+          forward blocks.}
+    \end{enumerate}
+\end{enumerate}
+
+With the above rules, the forward block chain is able to provide burst
+transaction processing capacity as needed, and automatically adjusts
+its base limits in response to real demand.  Miners are prevented from
+unilaterally increasing aggregate limits due to the prohibitive costs
+they would suffer directly as a result.
+
+Should the forward block chain be subject to an aggregate sigop limit,
+it too could be raised or lowered by a proportional amount.  However
+it is the opinion of this author that advances in validation speed and
+the elimination of quadratic costs have rendered the sigop limit
+mostly redundant, and as such the forward block chain should not be
+subject to an aggregate sigop limit at all.
+
+\subsection{Processing Larger Blocks on the Compatibility Chain via a Coordinated Time-Warp}
+
+Now that we've established how the forward block chain manages its
+aggregate weight limit, we can look at how the compatibility chain
+adjusts its inter-block interval to achieve a matching transaction
+processing rate, through coordinated exploitation of the time-warp
+bug.
+
+Upon activation, the we grant the compatibility chain new consensus
+rules governing its block timestamps:
+
+\begin{enumerate}
+  \item
+    If a compatibility block is \textbf{not} the last block in a
+    difficulty adjustment period (the block height is non-zero modulo
+    \num{2016}):
+
+    \begin{enumerate}
+      \item
+        If after constructing the block the transaction queue is
+        empty, no additional rules apply.
+
+      \item
+        Otherwise, if the next transaction in the queue is non-final
+        for reasons of a time-based lock-time or sequence-lock, the
+        block timestamp is set to the minimum value necessary to
+        satisfy that lock condition.
+
+      \item
+        Otherwise, the block's timestamp \textbf{must} be set to its
+        minimum allowed value, which is one more than the median of
+        the \num{11} blocks prior.
+    \end{enumerate}
+\suspend{enumerate}
+
+The implication of this rule is that so long as compatibility blocks
+are full, the timestamps of compatibility block headers advance no
+more quickly than one second every six blocks, until such time as the
+queue is emptied or the next item in the queue requires a higher
+timestamp value.  As the flexible weight limit of the forward block
+chain is expanded, the transaction queue will fill up and the
+difficulty of the comptibility chain will need to be lowered to keep
+up.  Making sure timestamps advance as slowly as possible ensures this
+can happen.
+
+The mechanism for causing the difficulty adjustment is a bit more
+complicated:
+
+\resume{enumerate}
+  \item
+    The compatibility block miner makes a commitment alongside forward
+    block headers to the aggregate declared weight of the forward
+    block chain up to that point.\footnote{If sharding is used (see
+    Section~\ref{sharding}), there is one aggregate value per shard
+    chain and the number considered here is the sum of the aggregate
+    locked-in weight across all shards.}  For the header to transition
+    to locked-in status, the commitment must match the same values
+    reported in the forward block chain, or else the compatibility
+    block containing the $N$th forward block commitment is invalid.
+
+  \item
+    Since the {\tt block.nTime} field now has its value subject to
+    additional rules when blocks are full, the compatibility block
+    miner commits to the wall-clock time in the {\tt nLockTime} field
+    of its coinbase transaction.\footnote{Implementation detail: the
+    actual commitment would be to {\tt LOCKTIME\_THRESHOLD} plus the
+    zero-clamped difference between the wall-clock time and the median
+    of the past \num{11} block timestamps, or some other calculation
+    which ensures the value is always larger than {\tt
+    LOCKTIME\_THRESHOLD} but less than the median past \num{11} block
+    timestamps.  The above rules should be interpreted accordingly.
+    Later references to this field refer to the actual UNIX timestamp,
+    not the {\tt LOCKTIME\_THRESHOLD}-relative encoded value.}  This
+    commitment is subject to roughly the same rules that have always
+    applied to the block timestamp:
+
+    \begin{enumerate}
+      \item
+        The coinbase {\tt nLockTime} must be greater than the median
+        of the past \num{23} coinbase {\tt nLockTime}'s.\footnotemark
+
+      \item
+        The coinbase {\tt nLockTime} commitment must be no more than
+        two hours ahead of the current wall-clock time.
+    \end{enumerate}
+
+    \footnotetext{The median-time-past window is doubled to prevent
+    ratcheting forward of the timestamp as a result of normal variance
+    once compatibility chain scaling limits are reached.}
+
+  \item
+
+    If a compatibility block \textbf{is} the last block in a
+    difficulty adjustment period (the block height is zero
+    modulo \num{2016}), then the block's timestamp is required to be
+    set according to the following procedure:
+
+    \begin{enumerate}
+      \item
+
+        A ratio $Q$, the \emph{warp factor}, is calculated as the
+        ratio of forward block utilization\footnotemark to the
+        original chain's settlement capacity:
+
+        \begin{equation}
+          Q = \frac{w}{\SI{6}{\mega\weight}}
+        \end{equation}
+
+        \footnotetext{Aggregate across all shards, if sharding is used:
+          \begin{equation*}
+            Q = \frac{\sum_{i=1}^{28}w_i}{\SI{6}{\mega\weight}}
+          \end{equation*}
+        }
+
+        The integer $\ceil{Q}$ is the same value, rounded up.
+
+      \item
+
+        Using the last $2016 \times \ceil{Q}$ compatibility blocks'
+        wall-clock timestamp information (the coinbase {\tt nLockTime}
+        fields, not the block header timestamp), a calculation is made
+        of which proof-of-work target over that approximately two week
+        period would have yielded $Q$ blocks in expectation
+        every \SI{600}{\second}, the necessary rate in order to
+        process forward blocks at their present size.
+
+      \item
+
+        The original/Satoshi difficulty adjustment formula is applied
+        in reverse to calculate the block timestamp which would cause
+        in an adjustment to the proof-of-work target calculated above.
+
+      \item
+
+        The block timestamp is constrained by clamping to be no
+        smaller than its minimum allowed value of one more than
+        the \num{11} block median time past from block headers, and no
+        greater than \SI{14400}{\second} (\SI{4}{\hour}) beyond the
+        last block's coinbase committed wall-clock
+        value.
+
+    \end{enumerate}
+\end{enumerate}
+
+Together these rules cause the compatibility chain's block rate to
+adapt to whatever the forward block chain's transaction processing
+throughput is, while still remaining responsive to changes in its own
+network hash rate, while also preventing compatibility block
+timestamps from being set so high as to cause a network split due to a
+future-dated block.
+
+We've now covered how (1) the forward block chain can grow (or shrink)
+in response to real demand; and (2) how the time-warp bug can be
+exploited to adjust the inter-block interval of the compatibility
+chain to make sure every forward-block transaction reaches every node.
+We look in Section~\ref{hardlimits} at what the hard limits are to
+scaling transaction processing capacity via this approach.
+
+\subsection{The Centralization Risks of a Flexibile Weight Limit}
+
+The compatibility chain is restricted to increasing its transaction
+processing throughput by decreasing its inter-block interval only,
+though exploiting the time-warp bug.  This increases validation costs
+for everyone, and adds centralizing pressure for compatibility miners.
+Furthermore, decreasing the compatibility miner's share of the block
+reward as part of the proof-of-work transition provides additional
+centralizing pressure so long as the distribution of cheap electricity
+and efficient mining hardware remains unequal: as lower block reward
+reduces mining profits for everyone, those with higher costs are
+driven out of business first, and what remains is an oligarchy of
+miners with access to the best hardware, the cheapest electricity,
+and/or the largest subsidies.
+
+With the forward block chain we have a choice of changing the block
+weight limit, adjusting the inter-block interval, or both.  Increasing
+forward block weight limit is preferable to decreasing the inter-block
+rate because of the non-linear relationship between inter-block time
+and centralization risk: some risks factors relate to block
+propagation delays caused by the speed of light, and these risks are
+independent of the size of a block.  We even go so far as to recommend
+lengthening the inter-block time on the forward block chain in order
+to achieve a small but important boost in censorship resistance.
+
+Considered by itself, indirectly increasing transaction processing
+throughput on the compatibility chain by shortening the inter-block
+interval proportionally increases the cost of validation, but
+does \textbf{not} affect censorship resistance.  This is because the
+ordering of transactions is fully determined by the forward blocks,
+and so with regard to censorship the distribution of miners on the
+compatibility chain doesn't matter so long as the forward block chain
+makes progress independent of the compatibility chain.
+
+More frequent compatibility blocks would be filled by larger forward
+blocks, however, and increasing the forward block size both increases
+the cost of validation for full nodes, and harms censorship resistance
+by disproportionately favoring large hashrate new-PoW miners.  In
+Section~\ref{sharding} we examine a solution that allows us to make
+more smaller, more frequent forward blocks while still maintaining the
+benefits of a long inter-block interval.  But first we look at just
+how much scaling advantage we can extract out of the time-warp bug on
+the compatibility chain.

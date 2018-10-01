@@ -1,0 +1,68 @@
+Changing the proof of work of an existing chain is normally thought of
+as something that can only be accomplished by means of a hard-fork.
+However it turns out it is possible to soft-fork a proof-of-work
+change while still delivering valid blocks to un-upgraded clients.
+
+The essential observation is that it is a soft-fork ammendment of the
+consensus rules to make a block subject to two proof-of-work checks,
+and that transitioning difficulty from one to the other is naturally
+accomplished by a sliding allocation of block reward.  At the
+beginning of the transition period the hash rate would remain as
+before, as nearly all of the block reward is allocated to the original
+proof-of-work miners, but would slowly decrease as dropping rewards
+drive miners to wind down operations when profitability limits are
+crossed.  Simultaneously miners of the new proof-of-work algorithm
+would deploy new mining hardware to capture the increasing amount of
+block reward available to them.  At the end of the transition the
+block is still subject to two proof-of-work requirements, but the
+original proof-of-work is at minimum difficulty.  During this
+transition un-upgraded clients will continue to see blocks produced
+with ever smaller difficulty, until the difficulty reaches its minimum
+value.
+
+In this scenario total-work security would be progressively reduced
+for old clients who only see and validate the original proof-of-work
+algorithm, but this degradation of security will occur over a period
+of years, be visible in reduction of hashrate, and full security could
+be restored for any node at any time by upgrading at their
+convenience.  Centralizing mining incentives would emerge rather
+rapidly as the reward is reduced for the set of old-PoW miners, but we
+will show that this has no adverse effects on censorship resistance in
+our scheme.  For the new-PoW mining network a
+decentralization-inducing growth of subsidy provides some measure of
+protection for the duration of the transition period.
+
+As stated so far, there remains the problem of providing the mechanism
+by which the sliding block reward is shared between the two sets of
+miners in a dual-PoW setup where a single block is subject to both
+proof-of-work requirements.  This requires some level of coordination
+between both sets of miners, and the more coordination that is
+required the less decentralized mining can be.  The solution we adopt
+instead is to have separate block chains with loose synchronization of
+state, which sidesteps most of the coordination complications
+entierly.
+
+\subsection{Merge Mining Is Also a No-Op Proof-of-Work Upgrade}
+
+We do not wish to imply that that this proposal is in any way an
+adversarial move against the current set of bitcoin/double-SHA256
+miners.  The scheme we develop for performing a proof-of-work upgrade
+has other desirable benefits, and the fact that the scheme requires
+changing the work function is merely an artifact of how the mechanism
+works.  Whether switching to a new proof-of-work algorithm that
+invalidates existing ASIC investments is desirable is outside the
+scope of what is discussed here.
+
+Requiring a proof-of-work ``change'' a necessary side effect of the
+scheme we are developing here.  However, that new proof-of-work
+algorithm could be double-SHA256 merge mining, which would be a no-op
+proof-of-work ``upgrade'' as all the same double-SHA256 ASIC hardware
+in use today would be able to simultaneously mine both, or at least
+could be made to do so with a software or firmware upgrade.
+
+Or the new proof-of-work function could be something completely
+different, rendering most existing hardware useless once the
+difficulty transition is complete.  Either approach is permitted by
+this proposal, and we will make no further comment on what this choice
+should be, which is entirely orthogonal to the adoption of
+forward blocks as a scaling solution.

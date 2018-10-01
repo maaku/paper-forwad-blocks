@@ -1,0 +1,180 @@
+Forward blocks and the compatibility chain work together to provide a
+smooth transition in difficulty from the old-PoW algorithm to the new.
+Achieving this difficulty transition requires a proportional
+allocation of reward between old-PoW and new-PoW miners that adjusts
+continuously and slowly enough over time as to prevent network
+disruption:
+
+\begin{enumerate}
+  \item
+    Forward-block miners are allowed a proportion $P \in [0,1]$ of the
+    subsidy plus fees of the their own blocks.  The remaining $1 - P$
+    portion is set aside for the compatibility block miners.
+
+    For example, if $P = 25\%$ and the subsidy is \SI{6.25}{\bitcoin}
+    and fees are \SI{1.75}{\bitcoin}, then the forward-block miner is
+    allowed to put up to $0.25 * (\SI{6.25}{\bitcoin} +
+    \SI{1.75}{\bitcoin}) = \SI{2}{\bitcoin}$ in the forward block's
+    non-spendable coinbase outputs.
+
+  \item
+    At the point of activation $P$ is assigned a value that is quite
+    small (almost zero), and the new proof of work is starts with a
+    minimal difficulty requirement.  Over a sufficiently long period,
+    the value $P$ is increased slowly and without discontinuity until
+    it is has the approximate value $P = 1$.
+
+  \item
+    A smoothing filter controller $R(\mathrm{tip})$ takes as input the
+    compatibility block headers, including locked-in forward block
+    headers and their coinbase transactions, and outputs an allowed
+    block reward for each compatibility block.  The content of the
+    compatibility block, including its own forward block commitments,
+    only affects the reward of future blocks.
+\end{enumerate}
+
+The naive solution of having the compatibility block miners simply
+fill out the remaining subsidy of the forward blocks they confirm runs
+into difficulty with the loosely coupled connection between the two
+chains.  The inherently random process of mining blocks means that
+some compatibility blocks will be responsible for confirming multiple
+forward block headers whereas others will include none at all, to say
+nothing of the perverse incentives this creates for reorgs.  The
+solution of applying a smoothing filter transforms the naturally
+fluctuating supply into a smooth, continuous reward function to
+prevent adverse mining incentives, and has an added advantage of
+making all portions of the block except for miner commitments and
+payout destinations fully deterministic from prior-block data.
+
+A simple controller that would work is ``$R(\mathrm{tip})$ is sum of
+compatibility block portions of the block reward of locked-in forward
+blocks minus payments already made, scaled by $\sfrac{1}{k}$'' for
+some suitably large value of $k$, fixed in the consensus rules, that
+puts added variance within the range of already existing natural
+mining variance, and with some initial conditions to prevent block
+reward discontinuity at the point of activation.\footnote{The actual
+  scale factor used should incorporate the current warp factor $Q$, as
+  defined in Section~\ref{flexcap}: $\frac{1}{k\ceil{Q}}$.
+  Incorporating $Q$ as a component of the scaling factor bounds the
+  increase in variance that would result from a steadily decreasing
+  inter-block interval caused by an increasing aggregate weight limit
+  on the forward block chain.}
+
+While this serves as an adequate existence proof of a solution, design
+of optimal controllers for this application is a topic deserving its
+own dedicated treatment, and we will not do so here.  We remain open
+to the possibility that better controllers exist and invite more
+research in this area.  However it is worth noting some design
+requirements:
+
+\begin{enumerate}
+  \item
+    The sum of the controller outputs over time must equal the total
+    amount made available to compatibility block miners as inputs to
+    the controller.  The compatibility block miners must not earn more
+    (or less) than their fair share.
+
+  \item
+    This fairness condition must hold true even if forward block
+    miners coordinate to control the schedule of compatibility block
+    income being registered in the forward blocks (e.g. by including
+    or delaying high-fee transactions).
+
+  \item
+    This fairness condition must hold true even if compatibility block
+    miners coordinate to control the booking of forward block income
+    by choosing to commit to forward blocks at certain times.
+
+  \item
+    This fairness condition must not be sensitive to other factors
+    under miner control (e.g. block timestamps, or block stuffing with
+    miner-generated transactions).
+\end{enumerate}
+
+By providing a smooth transition from the regime of $P \approx 0$ to
+$P \approx 1$ over a period of time comparable to hardware replacement
+cycles, the loss of reward by old-PoW miners occurs slowly enough to
+be planned for and without risk of sharp discontinuity in hashrate and
+long block delays, while still achieving the goal of having the
+old-PoW be trivial to maintain (e.g. difficulty \num{1}) at the end of
+the transition period.
+
+\subsection{Smoothing Out Bitcoin's Subsidy Schedule}
+
+The coinbase payout queue dissociates the block reward paid out to
+miners of both chains from the schedule of subsidy collected on the
+compatibility chain and used to process the coinbase payout queue.
+The reward received by the forward block miner depends on the block
+that they build, and the reward received by compatibility block miners
+depends on the history of forward blocks locked-in on that chain.
+Neither is necessarily tied to the subsidy-dropping schedule
+originally set by Satoshi---the block reward for both sets of miners
+is ultimately determined by the forward block chain, which has
+\textbf{no} requirement to match bitcoin's subsidy schedule:
+
+\begin{itemize}
+  \item
+    If there is greater subsidy on the forward block chain than the
+    compatibility chain---due to a faster subsidy schedule or less
+    than expectated number of compatibility blocks---then the coinbase
+    payout queue grows in length and miners have to wait
+    correspondingly longer to receive payment.
+
+  \item
+    If there is less subsidy on the forward block chain than the
+    compatibility chain---due to a slower subsidy schedule or
+    greaterthan expected number of compatibility blocks---then the
+    coinbase payout queue may be processed completely and excess
+    coinage accumulates in the carry-forward balance.
+\end{itemize}
+
+It is certainly not a problem for a carry-forward balance to exist,
+even a large one.  And while a coinbase payout queue causes delays in
+coin maturation, it does not otherwise cause any other issues for
+miners or validators.  Because of this we have the freedom to change
+the subsidy schedule for forward blocks, so long as:
+
+\begin{enumerate}
+  \item
+    The cumulative subsidy never exceeds the \SI{21e6}{\bitcoin} total
+    monetary base; and
+
+  \item
+    The cumulative subsidy at any given time does not exceed the
+    bitcoin subsidy schedule by too large a margin as to cause
+    unreasonable delays in the coinbase payment queue.
+\end{enumerate}
+
+So long as these conditions are met the coinbase payout queue may vary
+in size, but will not grow to excess, beyond what can be handled with
+a reasonable delay to coinbase maturation.  To prevent unreasonable
+delays the subsidy curve for the forward block chain needs to
+approximately match the pre-activation subsidy curve, but it need not
+follow exactly the same curve as some variance or local deviation is
+allowed.\footnote{Indeed, with the \SI{15}{\minute} block times
+  recommended in Section~\ref{parameters}, the per-block subsidy
+  schedule would need to be increased $50\%$ if nothing else.}  In
+particular, it is possible to ``even out'' the subsidy curve, and
+thereby remove the sharp discontinuities which presently exist, the
+so-called ``halvenings.''
+
+\begin{figure}
+  \includegraphics[width=0.5\textwidth]{subsidycurve.eps}
+  \caption{Alternative Subsidy Curve}
+  \label{subsidycurve}
+\end{figure}
+
+The simplest correction would be to transform the \SI{4}{\year}
+constant subsidy per halving period into a linear reduction over
+\SI{8}{\year} instead, resulting in a smooth subsidy curve without any
+discontinuities, as shown in Figure~\ref{subsidycurve}.  Regions of
+the graph for which the original/Satoshi subsidy curve exceed the
+linear-interpolation curve are periods of time where the excess
+subsidy on the compatibility chain would be banked in the
+carry-forward balance.  That banked value would be used to pay out
+miners in those regions where the original subsidy value is less than
+the smoothed approximation.
+
+In this way the dangerously incentive-incompatible ``halvening''
+phenomenon can be removed from bitcoin, resulting in a continuous and
+predictable subsidy drop over time.

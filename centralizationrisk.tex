@@ -1,0 +1,65 @@
+Centralization risks in bitcoin are generally concerning for two
+reasons: increasing \emph{cost of validation} and decreasing
+\emph{censorship resistance}.
+
+The \emph{cost of validation} is the amount of resources (computation,
+memory, bandwidth) required to initialize and maintain a full-node
+validator so as to be able to transact on the network without trusted
+third parties.  Any increase of the on-chain settlement throughput
+necessarily incurs an increase in the cost of validation that is at
+least linear.  In terms of magnitude, opinions differ but we contend
+that it would be largely noncontroversial to require that full node
+validation should require no more than the computational resources of
+a recent consumer laptop or desktop workstation, and have bandwidth
+requirements met by the lesser of a tail-weighted average of bandwidth
+available to home internet users or across onion routing overlay
+networks with large anonymity sets.
+
+\emph{Censorship resistance} is that property which results from the
+ability of any user to make a fair attempt at mining a block, with the
+chance of success proportional to their share of the hash rate, no
+matter how small; censorship being when another entity is able to
+unfairly control one's access to transact on the block chain, or
+unilaterally determine the order in which transactions are allowed to
+confirm.  Resistance to censorship is achieved by ensuring anyone and
+everyone who desires has the ability to mine blocks if they so choose,
+and that the probability of finding a block, and of having that block
+accepted by the network and not later reorg'd out, is precisely
+proportional to one's share of the hashpower, no matter how large or
+small that share is.  If Alice has twice as much hashpower as Bob,
+then she has twice as much say into transaction ordering as him, but
+no more and no less.  And since mining is by lottery, even a small
+percentage hashrate miner still has a chance to mine a block in due
+time.  As the miner of a block determines the order of transactions
+contained within, so it is that censorship resistance is having
+control over ordering of transactions shared by all users, fairly
+weighted by hashpower.
+
+Generally on-chain settlement throughput can be increased in two ways:
+by allowing blocks to be mined more frequently, or by increasing the
+size of blocks.  Both would adversely affect censorship resistance by
+increasing the proportion of time it takes to validate and propagate a
+block relative to the time it takes find it, as during propagation and
+validation other miners must either generate stale work while they
+wait for validation to complete, or open themselves to the risk of
+mining on top of an invalid block.  Miners don't have to make this
+tradeoff when building on their own blocks (as they know them to be
+valid already), which provides an advantage to larger hashrate miners
+who find themselves in that lucky circumstance more often than a less
+powerful miner would.  Whereas the cost of validation is linear with
+the on-chain settlement throughtput, the relationship of throughput
+with censorship resistance is non-linear and dependent on many
+factors.
+
+There is a natural floor to block propagation times due to fundamental
+speed-of-light induced message latency, which limits the effectiveness
+of lowering the inter-block interval compared with directly raising
+weight limits.  Therefore lowering the inter-block interval is not an
+effective mechanism for achieving higher on-chain settlement capacity
+as the costs grow rather quickly, and in excess of the benefits
+received.  We will explore however in Section~\ref{forwardblocks}
+through Section~\ref{flexcap} a mechanism by which the benefits of
+increasing the per-block weight limit directly can be achieved, while
+also lowering the inter-block interval from the perspective of
+un-upgraded nodes, without the superlinear effect on centralization
+risk.

@@ -1,0 +1,134 @@
+So far we've considered a unified coinbase payout queue for the
+purpose of coordinating the distribution of block rewards among the
+old-PoW and new-PoW miners, and for state symchronization between
+shards.  However the mechanism serves as a general solution to the
+problem of transferring value between various ledger extensions,
+almost without modification.
+
+The coinbase payout queue is useful anytime discrete accounting
+systems are used for maintaining a ledger of value within the same
+block chain.  As examples:
+
+\begin{itemize}
+
+  \item
+
+    Splitting the block chain into multiple shards, with transfers
+    between shards requiring coordination via explicit transfers, as
+    already seen;
+
+  \item
+
+    Obscuring transaction value via confidential transactions (with or
+    without mimblewimble kernel support);
+
+  \item
+
+    Obscuring the transaction graph via support of ring signature or
+    zero-knowledge spends; or
+
+  \item
+
+    Transferring value between multiple sidechains via a two-way peg
+    mechanism.
+
+\end{itemize}
+
+Coinbase payout queues are also useful for any circumstance where the
+value or other detail of an output depends on the circumstances of how
+the enclosing transaction is mined, and therefore a maturation process
+is required to prevent the fungibility risk that comes with allowing
+transactions that can be invalidated with a reorg.  Examples from this
+problem domain include:
+
+\begin{itemize}
+
+  \item
+
+    Block reward for forward and compatibility block miners, as
+    already seen;
+
+  \item
+
+    A rebateable fee market where excess fee beyond the clearing fee
+    rate is returned to the transaction author; or
+
+  \item
+
+    Transaction expiry, or other mechanisms by which a transaction may
+    become permanently invalid for some reason other than a reorg and
+    double-spend.
+
+\end{itemize}
+
+Neither of these are meant as an exhaustive list!  There are so many
+applications of coinbase payout queues as a maturation process that we
+cannot include them all, and the above should be treated as merely a
+list of interesting and/or relevant contemporary proposals, some of
+which will be elaborated on in the remainder of this talk.
+
+We briefly lay out the mechanism of generalization, first for
+segregated ledgers:
+
+\begin{enumerate}
+
+  \item
+
+    Permit the locking up of funds by sending coins to ``anyone can
+    spend'' script identifying the destination ledger and endpoint.
+    The value is added to a running total identifying the total
+    coinage tracked by the ledger, and the funds are immediately
+    available at the endpoint, within the segregated environment.
+
+  \item
+
+    The ``anyone can spend'' output paying into the ledger is claimed
+    by the miner who creates the block containing the transaction,
+    with the coinage added to the carry-forward balance used for
+    coinbase payouts.
+
+  \item
+
+    At a later point in time, any owner of funds on the segregated
+    ledger can authorize a withdrawal, and in doing so specify the
+    destination/recipient.  The amount is subtracted from the running
+    balance of funds on the segregated ledger, and an output of the
+    specified size and intended recipient is added to the coinbase
+    payout queue.
+
+\end{enumerate}
+
+For transaction outputs subject to maturation, the process is even
+simpler:
+
+\begin{enumerate}
+
+  \item
+
+    The funds are sent to an ``anyone can spend'' script identifying
+    the type of output and intended recipient/destination script.
+
+  \item
+
+    The miner who includes the transaction in their block spends the
+    output, adding the funds to the carry-forward balance, and adds an
+    equal valued output\footnote{The output has the same value, but
+      with a {\tt scriptPubKey} stripped of its extra-protocol
+      components.}  to the end of the coinbase payout queue.
+
+\end{enumerate}
+
+The output arrives in the hands of its intended recipient, in the
+intended ledger, via the usual process of coinbase maturation.
+
+We will make this abstract process more concrete with a number of
+examples drawn from protocol extensions that could be deployed in the
+very near future.
+
+\subsection{Rebateable fees and a consensus-visible fee market}
+
+\subsection{Confidential transactions and mimblewimble}
+
+\subsection{Unlinkable anonymous spend ledgers}
+
+\subsection{Sidechains and the two-way peg}
