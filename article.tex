@@ -16,6 +16,8 @@
 \usepackage{booktabs}
 \usepackage{xfrac}
 \usepackage[utf8]{inputenc}
+\usepackage{cite}
+\usepackage{url}
 
 \DeclareSIUnit\year{yr}
 \DeclareSIUnit\weight{We}
@@ -66,7 +68,7 @@
 \section{The High End of Scaling Limits on the Compatibility Chain} \label{hardlimits}
 \input{hardlimits.tex}
 
-\section{Multiple forward blocks: sharding the chain} \label{sharding}
+\section{Sharding across Multiple Forward Block Chains} \label{sharding}
 \input{sharding.tex}
 
 \section{Recommended Forward Shard Weight Limits and Flexcap Parameters} \label{parameters}
@@ -89,6 +91,11 @@
 
 %\section*{Acknowledgement}
 
-% bibtex goes here
+% --------------------------------------------------------------------
+% Bibliography
+% --------------------------------------------------------------------
+
+\bibliography{cites}{}
+\bibliographystyle{plain}
 
 \end{document}

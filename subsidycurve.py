@@ -23,13 +23,13 @@ for i in range(0, 210000*6+1):
     snew[-1] += f[period](i)
     snew[-1] += h[period+1]
 
-TODAY = 543744
+TODAY = 544320
 
 plt.plot(t,sold)
 plt.plot(t,snew)
 plt.plot(np.asarray([t[TODAY],]),
          np.asarray([(sold[TODAY]+snew[TODAY])/2]), 'D')
-plt.legend(['Satoshi','Linear Interp.','1 Oct 2018'], loc='best')
+plt.legend(['Satoshi','Linear Interp.','6 Oct 2018'], loc='best')
 plt.xlabel('Time (years)')
 plt.ylabel('Subsidy (bitcoin)')
 plt.savefig('subsidycurve.eps',format='eps',dpi=1200)

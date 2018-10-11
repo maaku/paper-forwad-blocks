@@ -1,6 +1,6 @@
 So far we've considered a unified coinbase payout queue for the
 purpose of coordinating the distribution of block rewards among the
-old-PoW and new-PoW miners, and for state symchronization between
+old-PoW and new-PoW miners, and for state synchronization between
 shards.  However the mechanism serves as a general solution to the
 problem of transferring value between various ledger extensions,
 almost without modification.
@@ -50,7 +50,7 @@ problem domain include:
 
   \item
 
-    A rebateable fee market where excess fee beyond the clearing fee
+    A rebatable fee market where excess fee beyond the clearing fee
     rate is returned to the transaction author; or
 
   \item
@@ -125,10 +125,286 @@ We will make this abstract process more concrete with a number of
 examples drawn from protocol extensions that could be deployed in the
 very near future.
 
-\subsection{Rebateable fees and a consensus-visible fee market}
+\subsection{Rebatable Fees and a Consensus-Visible Fee Market} \label{rebatablefee}
 
-\subsection{Confidential transactions and mimblewimble}
+In this proposal any user transaction may contain one or more explicit
+rebatable fee outputs.  A rebatable fee output has a non-zero explicit
+value and a {\tt scriptPubKey} containing a single data-push.  The
+data push consists of a weight value serialized as a variable-length
+32-bit integer, followed by the fee rebate script verbatim.
 
-\subsection{Unlinkable anonymous spend ledgers}
+The last transaction of a compatibility block is already granted
+special semantics: it is the location of the carry-forward balance
+which holds aggregated funds for future coinbase payouts.  We now
+grant it further special semantics:
+
+\begin{enumerate}
+
+  \item
+
+    Rebatable fee outputs do \textbf{not} enter the UTXO set of the
+    forward block (or shard) chain.  They are not spendable by other
+    user transactions.
+
+  \item
+
+    The last transaction of a compatibility block \textbf{must} spend
+    every rebatable fee output in that block, with the amount added to
+    the carry-forward balance.
+
+  \item
+
+    The committed total weight of a forward block must be greater than
+    or equal to both (1) the actual weight of the block under known
+    consensus rules; and (2) the sum of the serialized weights of all
+    rebatable fee outputs in that block.
+
+  \item
+
+    The \emph{clearing fee rate} of a forward block is defined to be
+    equal to the sum of all fees (implicit or rebatable) divided by
+    the declared weight of the block.
+
+  \item
+
+    For each rebatable fee output an excess value is calculated, equal
+    to the value of the output minus its serialized weight times the
+    clearing rate.  A consensus-critical dust heuristic is performed
+    to see if the excess fee would be considered spendable in the same
+    block without lowering the clearing fee rate, and depending on the
+    result:
+
+    \begin{enumerate}
+
+      \item
+
+        If the excess value is insufficient to be profitably spent the
+        excess is implicitly added to the transaction fees of the
+        block, and split between the forward block and compatibility
+        block miners as per the current value of $P$.
+
+      \item
+
+        Otherwise the forward block coinbase is required to pay out
+        the excess to the serialized {\tt scriptPubKey} encoded in the
+        rebatable fee output.
+
+    \end{enumerate}
+
+\end{enumerate}
+
+This achieves the soft-fork compatible rebatable fee \& incentive-safe
+fee market described to the bitcoin-dev mailing list\cite{rebatefeeml}
+and based off an earlier hard-fork fee market
+proposal\cite{rebatefeehf}.
+
+It also shares a lot of the necessary ground work infrastructure for
+forward blocks, even if it may seem unrelated, making a rebatable fee
+market a very small addition on top of forward blocks.
+
+\subsection{Confidential Transactions and Mimblewimble} \label{confidentialtx}
+
+\emph{Confidential transactions} is a scheme where the explicit {\tt
+  nValue} amount of an output is replaced by a Pedersen commitment,
+thereby obscuring the value to anyone who does not possess the
+blinding factor.  This allows for selective disclosure of transaction
+amounts while maintaining bitcoin's non-inflation guarantees.
+
+\emph{Mimblewimble} is an application of confidential transactions in
+which the {\tt scriptPubKey} is not used and therefore knowledge of
+the blinding factor of an output serves as authorization of a spend.
+Removing explicit authorization scripts prevents selective disclosure,
+but gained instead are the efficiency and privacy improvements of
+transaction cut-through and aggregation.
+
+Bringing confidential transactions and mimblewimble to bitcoin
+requires (1) adding the necessary fields---Pedersen commitments, ECDH
+half-protocol nonces, and rangeproofs---to the transaction output data
+structure; (2) a mechanism for locking up a pool of funds backing the
+total value of all confidential outputs; and (3) the validation rules
+to enforce the above.
+
+The transaction output data structure is most easily extended by
+adding a hash of the extra fields to the end of the {\tt
+  scriptPubKey}.  For compatibility with future soft-forks, a general
+mechanism developed such that a native segwit output is allowed up to
+eight data additional data pushes (although typically only
+\numrange{1}{3} are used), together called the \emph{suffix}, with the
+last being a required-minimal serialized integer value specifying the
+extended output version.
+
+The version corresponding with a confidential transaction output
+consists specifies an intervening data value consisting of a single
+\SI{32}{\byte} SHA256 hash of the Pedersen commitment and ECDH nonce.
+The rangeproof is placed within the output's witness data
+structure.\footnote{Outputs need to be given witnesses in most of
+  these schemes.  It would be a simple matter to add an \emph{output
+    witness structure} whose root hash was also committed somewhere in
+  the block, e.g. the ``witness nonce'' of segwit.}  The {\tt nValue}
+of the output is \SI{0}{\bitcoin}.
+
+To move coins into a confidential output, the user makes an ``anyone
+can spend'' output containing the transferred value and, in an
+extended output field, a code indicating this is a transfer into the
+confidential transactions / mimblewimble ledger and a Pedersen
+commitment of its value (with the necessary signature of the nonce to
+prove it in the witness structure).  The output is spent by the
+compatibility miner and added to the carry-forward balance, while
+within the transaction accounting a confidential ``input'' of the same
+amount is added.  The transaction author, being the only one who knows
+the nonce of the implicit input, creates confidential outputs claiming
+it.
+
+Within the confidential ledger, extended outputs can be spent as
+inputs and new outputs created freely so long as the Pedersen
+commitments sum correctly in each transaction.
+
+Three mechanisms can be provided by which confidential coins can be
+converted back into explicit coins:
+
+\begin{enumerate}
+
+  \item
+
+    An explicit fee can be provided in the form of a ``provably
+    unspendable'' output with an extended field specifying how much
+    coinage should be added to the output side of the Pedersen
+    commitment sum.  The value is treated the same as an implicit fee
+    would be.
+
+  \item
+
+    A confidential to explicit conversion can be performed by
+    including a ``provably unspendable'' output with extended data
+    fields specifying the amount and destination.  Upon achieving
+    locked-in status, an explicit output of that amount and to the
+    specified destination is added to the coinbase payout queue.
+
+  \item
+
+    A rebatable confidential fee combines both of the above categories
+    by providing an explicit amount that is counted against the
+    confidential outputs side of the Pedersen commitment sum, and a
+    \emph{return script} to which any excess funds should be sent.  It
+    is treated as a rebatable fee described in
+    Section~\ref{rebatablefee}.\footnote{It would be possible to
+      support returning funds as a ``confidential'' Pedersen
+      commitment, by providing the EC point corresponding to the
+      blinding factor, but (1) such an output would not be
+      confidential in any meaningful sense as its value would be
+      determined by consensus; and (2) this wouldn't save any block
+      chain space over the alternative of having the user aggregate
+      return fee excess into confidential outputs themselves.}
+
+\end{enumerate}
+
+Moving from confidential to explicit value requires use of the
+coinbase payout queue because the carry-forward balance that is where
+the locked up coinage backing the confidential value resides.  If the
+user cannot wait for coinbase maturation, they can find another user
+willing to trustlessly front the money by signing an explicit input
+that covers the amount, minus their service fee, and a confidential to
+explicit payout to themselves.
+
+\subsection{Unlinkable Anonymous Spend Ledgers}
+
+\emph{Zcash} demonstrates how a \emph{zk-SNARK} can be used to prove a
+spend is from an ever growing set of historical anonymous outputs and
+that the output has never been spent before, but without revealing
+which output it was.  \emph{Bulletproofs} enable similar constructs
+with only elliptic curve discrete log assumptions, albeit with higher
+validation cost.  \emph{Monero} achieves a weaker property using
+\emph{ring signatures} to prove that an input was one of $N$
+explicitly enumerated previous inputs, thereby gaining efficiency at
+the cost of a reduced anonymity set.
+
+Any of the above approaches could be deployed in a similar manner to
+confidential transactions discussed in Section~\ref{confidentialtx}:
+
+\begin{enumerate}
+
+  \item
+
+    An anonymous output is a zero-{\tt nValue} ``provably
+    unspendable'' output containing some sort of commitment to its
+    actual value.
+
+  \item
+
+    Anonymous outputs are tracked with their own ledger:
+
+    \begin{enumerate}
+
+      \item
+
+        Creating an anonymous output requires a \emph{transfer in}
+        which sends explicit value to an ``anyone can spend'' output
+        claimed in a compatibility block and added to the
+        carry-forward balance.
+
+      \item
+
+        A ``transfer out'' requires some input from the same ledger
+        and specification of the destination, which is added to the
+        coinbase payout queue when the transfer out is locked in.
+
+      \item
+
+        Some mechanism exists for paying explicit or rebatable fees
+        from the ledger, reducing coins available to outputs of the
+        same ledger.
+
+    \end{enumerate}
+
+  \item
+
+    Spending an anonymous output requires keeping some amount of
+    information available forever, to prevent double-spends.  Data
+    storage on validators can be avoided by using a Merkle tree
+    updated on each spend.
+
+  \item
+
+    The actual spend is not an input, as that would require specifying
+    an input which defeats the purpose.  Instead, it is a zero-{\tt
+      nValue} ``output'' whose witness provides the spend
+    authorization, and the committed value pulled from the output
+    witness is added on the input side of the anonymous spend ledger.
+
+\end{enumerate}
+
+Which anonymous spend mechanism to use and the format of its spend
+authorization witness we leave up to debate; our concern here is with
+the block chain ledger accounting and ledger transfer mechanisms.
 
 \subsection{Sidechains and the two-way peg}
+
+For this topic we avoid the issue of which validator-enforced
+sidechain architecture should be used---whether the SPV peg,
+Drivechains, or something else.  Regardless of the transfer
+authorization scheme the accounting mechanism is the same:
+
+\begin{enumerate}
+
+\item
+
+  A \emph{sidechain transfer} is an ``anyone can spend'' output which
+  is claimed by the compatibility block miner and added to the
+  carry-forward balance, and which commits to the sidechain identifier
+  and destination script to receive the funds on the other chain.
+
+\item
+
+  A \emph{return-peg transfer} is an ``provably unspendable'' output
+  which commits to the amount and destination of the funds, and whose
+  witness provides the necessary sidechain information to validate the
+  return peg.  Once locked-in, the return peg is added to the coinbase
+  payout queue.
+
+\end{enumerate}
+
+By now it should be clear that all of these extended-ledger mechanisms
+share the same common approach, using the carry-forward balance and
+coinbase payout queue to manage transfers in and out, and extra data
+pushes in the {\tt scriptPubKey} to store extended transaction output
+fields.

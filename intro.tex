@@ -1,7 +1,7 @@
 The bitcoin block chain has per-block aggregate limits that prevent
 the on-chain settlement capacity from increasing beyond fixed levels
 of \SI{4}{\mega\weight} per \SI{10}{\min} in expectation.  While
-seggregated witness achieved a \numrange{2}{3.6}x improvement in
+segregated witness achieved a \numrange{2}{3.6}x improvement in
 settlement capacity by removing witness data from the area of the
 block subject to classical limits, this was a one-time gain: there are
 no other large areas of the block that can be safely segregated into
@@ -89,7 +89,7 @@ requires a soft-fork proof-of-work change\footnote{The ``new''
   proof-of-work could be a variation of merged mining, however, should
   retiring existing mining hardware be deemed an anti-goal.} as
 natural consequence of its construction.  In fact this insight into
-accomplishing soft-fork upgrrades of the proof-of-work function is the
+accomplishing soft-fork upgrades of the proof-of-work function is the
 driving idea behind the forward blocks construction, and where we
 begin the exposition in Section~\ref{dualpow}, after a brief
 discussion of centralization risks in
@@ -100,12 +100,12 @@ conclusion, we develop in Sections~\ref{forwardblocks},
 \ref{coinbasepayoutqueue}, and~\ref{smoothdifficulty} a two-chain
 structure where the \emph{forward block chain} establishes a
 consistent transaction ordering reflected in the \emph{compatibility
-  block chain} after a loosly coupled process of state
+  block chain} after a loosely coupled process of state
 synchronization.
 
 To actually increase on-chain settlement throughput,
 Section~\ref{flexcap} describes the approach of directly increasing
-aggrergate limits used on the forward block chain, synchronized with
+aggregate limits used on the forward block chain, synchronized with
 time-warps to lower the inter-block interval on the compatibility
 chain, all constrained by a demand-responsive and growth-constrained
 flexible weight cap.
@@ -121,9 +121,9 @@ long-term growth constraints in Section~\ref{parameters}.
 
 Finally, it turns out the mechanism developed for transferring value
 between shards is generally applicable as a mechanism for handling
-coinbase maturation requirements and tranferring value between
+coinbase maturation requirements and transferring value between
 segregated ledgers.  We briefly examine in
 Section~\ref{extensionoutputs} how it can be used to provide a
-rebateable fee market for consensus fee detection as well as handle
+rebatable fee market for consensus fee detection as well as handle
 the transfer of explicit value between confidential transactions /
 mimblewimble, unlinkable anonymous spends, and sidechain ledgers.
