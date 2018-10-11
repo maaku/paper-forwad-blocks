@@ -1,0 +1,656 @@
+\documentclass[10pt]{beamer}
+
+\usetheme[progressbar=frametitle]{metropolis}
+\usepackage{appendixnumberbeamer}
+
+\usepackage{booktabs}
+\usepackage[scale=2]{ccicons}
+
+\usepackage{pgfplots}
+\usepgfplotslibrary{dateplot}
+
+\usepackage{xspace}
+\newcommand{\themename}{\textbf{\textsc{metropolis}}\xspace}
+
+\usepackage{graphicx}
+\graphicspath{{.}}
+\usepackage{epsfig}
+\usepackage{mathptmx}
+\usepackage{times}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage[binary-units]{siunitx}
+\usepackage{mdwlist}
+\usepackage{xfrac}
+\usepackage[utf8]{inputenc}
+\usepackage{cite}
+\usepackage{url}
+
+\DeclareSIUnit\year{yr}
+\DeclareSIUnit\weight{We}
+\DeclareSIUnit\bitcoin{btc}
+\DeclareSIUnit\block{blk}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+
+\title{Forward Blocks}
+\subtitle{On-chain/settlement capacity increases without the hard-fork}
+\date{October 6, 2018}
+% \date{}
+\author{Mark Friedenbach}
+\institute{No organizational affiliation}
+% \titlegraphic{\hfill\includegraphics[height=1.5cm]{logo.pdf}}
+
+\begin{document}
+
+\maketitle
+
+%\begin{frame}{Table of Contents}
+%  \setbeamertemplate{section in toc}[sections numbered]
+%  \tableofcontents[hideallsubsections]
+%\end{frame}
+
+% --------------------------------------------------------------------
+\section{Introduction}
+% --------------------------------------------------------------------
+
+\begin{frame}{Goals}
+
+  \emph{Forward blocks} arose out of considering how a proof-of-work
+  change could be accomplished as a soft-fork, combined with
+  mechanisms for soft-fork deployment of privacy-enhancing alternative
+  ledgers.  It was later discovered that it \textbf{also} provides
+  scaling benefits including:
+
+  \begin{itemize}
+
+  \item Improved censorship resistance through sharding.
+
+  \item Direct on-chain scaling up to \num{3584}x (for bitcoin
+    specifically).
+
+  \end{itemize}
+
+  It also provides a few miscellaneous other benefits such as a
+  linearized block subsidy and the underlying ledger support for
+  future chain enhancements such as confidential transactions and
+  sidechains.
+
+  \alert{Note}: This talk is a summary of the paper, which has too
+  many moving parts to be fully described in a \SI{30}{\minute} talk.
+
+\end{frame}
+
+\begin{frame}{Definitions}
+
+  A \emph{soft fork} is a tightening of the consensus rules such that
+  some blocks which were previously valid are now invalid, but no
+  previously invalid blocks become valid. Simply: old nodes still
+  see the chain advance.
+
+  A \emph{forwards compatible soft fork} is a soft-fork for which
+  un-upgraded nodes still receive and process \textbf{all}
+  transactions.
+
+  We are specifically interested in forwards compatibility because it
+  fits our prior model for the safety of soft forks:
+
+  \begin{itemize}
+
+  \item Non-mandatory upgrades paths.
+
+  \item No flag days beyond which chain access is limited.
+
+  \item An ability for un-upgraded infrastructure to continue working
+    during and after the transition period.
+
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{A note on centralization risks}
+
+  \emph{Centralization risks} broadly fall into two categories:
+
+  \begin{enumerate}
+
+  \item Increasing the \emph{cost of validation}, or the amount of
+    resources (computation, memory, bandwidth) required to initialize
+    and maintain a full-node validator so as to be able to transact on
+    the network without trusted third parties.
+
+  \suspend{enumerate}
+
+  Cost of validation is proportional to the number of transactions in
+  full nodes and the number of blocks for SPV nodes.
+
+  \resume{enumerate}
+
+  \item Reducing \emph{censorship resistance}, which is that property
+    which results from any user being able to make a fair attempt at
+    mining a block, with the chance of success proportional to their
+    share of the hash rate, no matter how large or small.
+
+  \end{enumerate}
+
+  Censorship resistance has a non-linear relationship to the ratio of
+  block propagation time to the average block interval.
+
+\end{frame}
+
+% --------------------------------------------------------------------
+\section{Dual Proof-of-Work}
+% --------------------------------------------------------------------
+
+\begin{frame}{A block subject to 2 proofs-of-work?}
+
+  \textbf{No}.
+
+  \emph{Forward blocks} involves separate chains with separate
+  proof-of-work functions, rather than a single block chain with each
+  block subject to multiple work requirements.
+
+  But just for the moment, let's use a single block subject to two
+  proofs-of-work as an example.
+
+\end{frame}
+
+\begin{frame}{Achieving a transition in difficulty}
+
+  With a block subject to two work functions, the difficulty needs to
+  non-disruptively transition from the old proof-of-work to the new.
+
+  The easiest way to do this is have a sliding block reward that
+  transitions block reward from going primarily to the solver of the
+  old proof-of-work challenge to the new, over of period of time long
+  enough as to prevent mining disruption.
+
+  This is expressed by a function $P(t) \in [0,1]$ which represents
+  the proportion of the block reward that goes to the new
+  proof-of-work miners vs. the old:
+
+  \begin{equation*}
+    P(t) = \mathrm{min}(\frac{t}{\SI{3.5}{\year}}, 1)
+  \end{equation*}
+
+  At the end of the transition period, in this case \SI{3.5}{\year},
+  the new proof-of-work will represent nearly all of the security /
+  network hash power, and the old proof-of-work will be at minimum
+  difficulty.
+
+\end{frame}
+
+\begin{frame}{New proof-of-work, or merge mining?}
+
+  We are given an opportunity with the deployment of forward blocks to
+  change proof-of-work functions.  But we not required to do so---the
+  ``new proof of work'' could be double-SHA256 merged mining.
+
+  I do not wish that ``proof-of-work upgrade'' be interpreted as an
+  adversarial move against the current set of bitcoin/double-SHA256
+  miners.  Rather it is a direct consequence of the design that the
+  forward block chain \textbf{requires} a new proof-of-work function.
+  A compatible form of salted merge mining is a sufficiently different
+  function to work for this purpose.
+
+  Or it could be something entirely new rendering most existing
+  hardware useless once the transition is complete.  Either approach
+  is permitted by this proposal, and we will make no further comment
+  on what this choice should be, which is entirely orthogonal to the
+  adoption of forward blocks as a scaling solution.
+
+\end{frame}
+
+% --------------------------------------------------------------------
+\section{Raising the Block-Weight Limit}
+% --------------------------------------------------------------------
+
+\begin{frame}{Forced hard-forks}
+
+  The commonly discussed ``safe'' mechanism\footnotemark for raising
+  the block weight limit is the \emph{forced hard fork}: move
+  transactions into a committed extension block with higher aggregate
+  limits---and/or any other consensus changes---and then force the old
+  blocks to be empty.
+
+  \footnotetext{Forced hard forks are described as safe, but safety is
+    relative.  I object to describing a purposeful denial of service
+    attack against un-upgraded nodes as ``safe.''}
+
+  Confirming the validation of transactions is only possible by
+  upgrading to a client which understands the extension block.
+  Un-upgraded nodes are protected from seeing divergent spend
+  histories\footnotemark by the fact that the old blocks are kept
+  empty.  To restore service, they are required to upgrade.
+
+  \footnotetext{Again, I'd contend that empty blocks should be
+    considered divergent with material consequences.  A lightning node
+    needs to see its channel closure, for example.}
+
+\end{frame}
+
+\begin{frame}{Forward blocks}
+
+  Forced hard forks break forward compatibility, but note:
+
+  \begin{itemize}
+
+  \item If we ensure that the extension block only violates aggregate,
+    block-level consensus rules, then all transactions in the new
+    blocks would hypothetically be valid on the old
+    chain.\footnote{Except for coinbases and their children.  We have
+      a way of dealing with this.}
+
+  \item Instead of forced empty blocks we can have the old
+    \emph{compatibility block chain} repeat the same transactions in
+    the same order.
+
+  \item By switching from extension blocks to a separate chain with
+    loosely coupled state, the \emph{time warp bug} can be exploited
+    to lower compatibility block intervals to keep pace with higher
+    limits.
+
+  \end{itemize}
+
+  This new chain which determines transaction ordering we call the
+  \emph{forward block chain}.\footnote{A reference to \emph{forward
+      observers} of mobile infantry units that scout the path ahead.}
+
+\end{frame}
+
+\begin{frame}{Two chains, two separate ways to scale}
+
+  The forward block chain achieves on-chain scaling by increasing its
+  per-block aggregate weight limit while maintaining a fixed, long
+  duration target inter-block interval.  This achieves the smallest
+  possible impact on centralization risks for both full validators and
+  SPV nodes.
+
+  The compatibility block chain can only scale by exploiting the time
+  warp bug to lower its expected inter-block interval.  Lowering the
+  block interval is strongly centralizing on the compatibility chain,
+  but this has \textbf{no effect} on censorship resistance because
+  transaction ordering is already determined solely by the forward
+  block chain.\footnotemark
+
+  \footnotetext{During the transition between proof-of-works, we
+    wouldn't want the forward chain to scale so much that the
+    compatibility chain becomes centralized before the forward chain
+    has enough mining security.  The flexible cap will prevent this.}
+
+\end{frame}
+
+\begin{frame}{Some annoying loose ends...}
+
+  An (incomplete!) list of issues left open by this explanation:
+
+  \begin{itemize}
+
+  \item Many compatibility blocks could be needed to process a single
+    forward block, so having the same miner produce these blocks
+    unacceptably introduces the notion of work progress.
+
+  \item A coinbase transaction of the forward block is not seen by
+    un-upgraded nodes, so it cannot enter the UTXO set.  Both miners
+    need to be paid by the compatibility block's coinbase.
+
+  \item Since different miners\footnotemark generate forward and
+    compatibility blocks, there needs to be some form of state
+    synchronization in order for:
+
+    \footnotetext{The same set of miners if merged mining is used, but
+      miner of a specific forward block would not mine the
+      corresponding compatibility blocks except by random chance.}
+
+    \begin{itemize}
+
+    \item Compatibility block miners to learn forward block
+      transactions; and
+
+    \item Forward block miners to learn the coinbase transactions of
+      the compatibility chain, so as to process them into the UTXO
+      set.
+
+    \end{itemize}
+
+  \end{itemize}
+
+\end{frame}
+
+% --------------------------------------------------------------------
+\section{Loosely Coupled Chain State}
+% --------------------------------------------------------------------
+
+\begin{frame}{Cross-chain header commitments}
+
+  Both the forward chain and the compatibility chain commit to the
+  headers of the other.  When a header reaches \num{100}
+  confirmations, it becomes \emph{locked-in}:
+
+  \begin{itemize}
+
+  \item Any \emph{locked-in} header must reference a valid block.
+
+  \item When the compatibility chain locks in a forward block header,
+    the transactions of that block are added to the \emph{transaction
+      processing queue} and its coinbase outputs to the \emph{coinbase
+      payout queue}.
+
+  \item When the forward chain locks in a compatibility block header,
+    the coinbase of that block enters the UTXO set.\footnote{Subject
+      to the usual \num{100}-block maturity requirement.}
+
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{One coinbase shared by two chains}
+
+  The coinbase of the forward block has outputs that cannot be spent,
+  so they are repeated in the compatibility block's coinbase after
+  lock-in.
+
+  The forward block miner claims a portion $P$ of the coinbase reward
+  of their block.  The remaining $1-P$ value goes into a fund to pay
+  compatibility block miners.  The compatibility block miner gets
+  \sfrac{1}{k} the current size of the fund.
+
+  Using the compatibility coinbase to synchronize payments based on
+  the state of multiple chains is a common pattern we will reuse.
+
+\end{frame}
+
+% --------------------------------------------------------------------
+\section{A Flexible Weight Limit}
+% --------------------------------------------------------------------
+
+\begin{frame}{Initial parameters of the forward block chain}
+
+  \textbf{Target block interval}: \SI{15}{\minute}
+
+  Increasing the block interval from \SI{10}{\minute} to
+  \SI{15}{\minute} achieves a one-shot boost in censorship resistance,
+  at the cost of lengthening confirmation times.  For a chain tailored
+  to handling settlement transactions, that's a good trade-off.
+
+  \textbf{Initial max block weight}: \SI{6}{\mega\weight}
+
+  With \SI{15}{\min} blocks, this represents the same transaction
+  processing rate as the original chain's limit of
+  \SI{4}{\mega\weight} blocks every \SI{10}{\minute}.
+
+\end{frame}
+
+\begin{frame}{Growing the forward block chain with a flexcap}
+
+  The forward block miner is allowed to \emph{bias} their work target
+  by up to $\pm 25\%$, making their blocks easier or harder to solve.
+  In return, the aggregate weight limit of their block is adjusted:
+
+  \begin{align*}
+    x &= \frac{T - T_0}{T_0}\\
+    x &\in [-0.25, 0.25]\\
+    w(x) &= w_0(2x - 4x^2)
+  \end{align*}
+
+  Every $L=2016$ forward blocks, two things happen:
+
+  \begin{itemize}
+
+  \item The base limit $w_0$ adjusts to the (possibly gain limited) average of the past $L$ declared weights.
+
+  \item The new-PoW difficulty adjusts up or down as necessary to maintain the \SI{15}{\minute} inter-block interval.
+
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{Offset reward as a function of difficulty bias}
+
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{rewardbias.eps}
+    \caption{Offset reward as a function of difficulty bias.}
+    \label{rewardbiasfig}
+  \end{figure}
+
+\end{frame}
+
+\begin{frame}{Time-warping the compatibility chain}
+
+  For compatibility blocks that are \textbf{not} the last block in a
+  difficulty adjustment window:
+
+  \begin{enumerate}
+
+  \item If after constructing the block the transaction queue is
+    empty, no additional rules apply.
+
+  \item Otherwise, if the next transaction in the queue is non-final
+    for reasons of a time-based lock-time or sequence-lock, the block
+    timestamp is set to the minimum value necessary to satisfy that
+    lock condition.
+
+  \item Otherwise, the block's timestamp \textbf{must} be set to its
+    minimum allowed value, which is one more than the median of the
+    \num{11} blocks prior.
+
+  \end{enumerate}
+
+\end{frame}
+
+\begin{frame}{Time-warping the compatibility chain (2)}
+
+  For compatibility blocks that \textbf{are} the last block in a
+  difficulty adjustment window:
+
+  The \emph{warp factor} is a ratio $Q$ equal to the forward block
+  utilization over the original chain's settlement capacity:
+
+  \begin{equation*}
+    Q = \frac{w}{\SI{6}{\mega\weight}}
+  \end{equation*}
+
+  The Satoshi difficulty adjustment formula is applied in reverse to
+  calculate the block timestamp that would cause the adjustment needed
+  to handle $Q$ blocks in expectation every \SI{600}{\second}.
+
+\end{frame}
+
+% --------------------------------------------------------------------
+\section{A Smooth Subsidy Schedule}
+% --------------------------------------------------------------------
+
+\begin{frame}{Eliminate the ``halvening'' with a continuous subsidy curve}
+
+  We have the freedom to set a different subsidy schedule in forward
+  blocks, so long as:
+
+  \begin{enumerate}
+
+  \item The cumulative subsidy never exceeds the \SI{21e6}{\bitcoin}
+    total monetary base; and
+
+  \item The cumulative subsidy at any given time does not exceed the
+    bitcoin subsidy schedule by too large a margin as to cause
+    unreasonable delays in the coinbase payment queue.
+
+  \end{enumerate}
+
+  Most notably, we can use this opportunity to smooth out the step
+  function used to calculate subsidy, making subsidy a continuous
+  function.
+
+\end{frame}
+
+\begin{frame}{Eliminate the ``halvening'' with a continuous subsidy curve}
+
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{subsidycurve.eps}
+    \caption{Alternative Subsidy Curve}
+    \label{subsidycurve}
+  \end{figure}
+
+\end{frame}
+
+% --------------------------------------------------------------------
+\section{Multiple Forward Block Chains}
+% --------------------------------------------------------------------
+
+\begin{frame}{Sharding: multiple forward block chains}
+
+  A very significant gain in censorship resistance can be had by
+  sharding\footnotemark the forward block chain into multiple chains
+  with disjoint UTXO sets.
+
+  \footnotetext{Sharding is a term of art borrowed from the database
+    field.  The ``sharding'' described here is largely \textbf{not}
+    the sharding talked about in crypto currency projects, but it is
+    nevertheless the correct term to use.}
+
+  By splitting the chain into $M$ shards, requiring transactions
+  source their funds from a single shard only, and using a
+  separately-salted work function for each, a shard block will appear
+  in expectation every \sfrac{\SI{15}{\minute}}{$M$}, but blocks from
+  a given shard chain will be separated by a full \SI{15}{\minute}.
+  This achieves an $M$-fold increase in censorship resistance for a
+  given aggregate weight across all shards, if activity is evenly
+  distributed amongst the shards.
+
+\end{frame}
+
+\begin{frame}{Transferring value between shards}
+
+  \begin{columns}
+
+    \begin{column}{0.5\textwidth}
+
+      \begin{table} \center
+        \caption{Shard Identifier Prefixes}
+        \label{shardprefix}
+        \begin{tabular}{r l l}
+          \toprule
+          Shard & Prefix & Opcode\\
+          \midrule
+          1   &  $\mathtt{0x00}$  &  {\tt FALSE}\\
+          2   &  $\mathtt{0x4f}$  &  {\tt 1NEGATE}\\
+          3   &  $\mathtt{0x51}$  &  {\tt TRUE}\\
+          4   &  $\mathtt{0x52}$  &  \num{2}\\
+          \multicolumn{3}{c}{$\dots$}\\
+          18  &  $\mathtt{0x60}$  &  \num{16}\\
+          19  &  $\mathtt{0x61}$  &  {\tt NOP}\\
+          20  &  $\mathtt{0x74}$  &  {\tt DEPTH}\\
+          21  &  $\mathtt{0xb0}$  &  {\tt NOP1}\\
+          22  &  $\mathtt{0xb3}$  &  {\tt NOP4}\\
+          \multicolumn{3}{c}{$\dots$}\\
+          28  &  $\mathtt{0xb9}$  &  {\tt NOP10}\\
+          \bottomrule
+        \end{tabular}
+      \end{table}
+
+    \end{column}
+
+    \begin{column}{0.5\textwidth}
+
+      A native segwit output can be prefixed with a \SI{1}{\byte}
+      value indicating the destination shard identifier.  This makes
+      it unspendable on the forward block chain.  Note that {\tt NOP2}
+      and {\tt NOP3} are not usable as such on bitcoin.\\~\
+
+      These \emph{prefixed outputs} are added to the coinbase payout
+      queue verbatim, and the value is claimed by the compatibility
+      block miner and added to the carry-forward balance.
+
+    \end{column}
+
+  \end{columns}
+
+\end{frame}
+
+% --------------------------------------------------------------------
+%\section{The High End of Scaling Limits}
+% --------------------------------------------------------------------
+
+\begin{frame}{The high end of scaling limits}
+
+  The compatibility chain's block timestamp must tick forward once
+  every 6 blocks, which gives a maximum of \num{3600} compatibility
+  blocks per \SI{600}{\second} legacy block interval.
+
+  This is closely matched by a \SI{768}{\mega\weight} maximum weight
+  on each of \num{28} separate shards with a \SI{900}{\second} block
+  interval.
+
+  Together this would allow for \SI{14.336}{\giga\weight} of
+  transactions to be processed every \SI{10}{\minute}, which is about
+  \num{1}tx/pp/day for everyone currently alive.
+
+  To prevent denial of service from premature growth, it is
+  recommended that a gain limiter of $\pm 0.78125\%$ per adjustment
+  period be applied, which results in a maximum growth of
+  \SI[per-mode=symbol]{\pm 14.5}{\percent\per\year}.
+
+\end{frame}
+
+% --------------------------------------------------------------------
+\section{Extension Outputs}
+% --------------------------------------------------------------------
+
+\begin{frame}{Generalized ledger transfer mechanism}
+
+  The coinbase payout queue is useful anytime discrete accounting
+  systems are used for maintaining a ledger of value within the same
+  block chain.  As examples:
+
+  \begin{itemize}
+
+  \item Splitting the block chain into multiple shards, with transfers
+    between shards requiring coordination via explicit transfers, as
+    already seen;
+
+  \item Obscuring transaction value via confidential transactions
+    (with or without mimblewimble kernel support);
+
+  \item Obscuring the transaction graph via support of ring signature
+    or zero-knowledge spends; or
+
+  \item Transferring value between multiple sidechains via a two-way
+    peg mechanism.
+
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{Generalized coinbase maturity mechanism}
+
+  Coinbase payout queues are also useful for any circumstance where
+  the value or other detail of an output depends on the circumstances
+  of how the enclosing transaction is mined, and therefore a
+  maturation process is required to prevent the fungibility risk that
+  comes with allowing transactions that can be invalidated with a
+  reorg.  Examples from this problem domain include:
+
+  \begin{itemize}
+
+  \item Block reward for forward and compatibility block miners, as
+    already seen;
+
+  \item A rebatable fee market where excess fee beyond the clearing
+    fee rate is returned to the transaction author; or
+
+  \item Transaction expiry, or other mechanisms by which a transaction
+    may become permanently invalid for some reason other than a reorg
+    and double-spend.
+
+  \end{itemize}
+
+\end{frame}
+
+% --------------------------------------------------------------------
+
+\begin{frame}[standout]
+  Questions?
+\end{frame}
+
+\end{document}
